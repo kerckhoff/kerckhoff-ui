@@ -1,26 +1,49 @@
-import React, { Component } from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { Component } from "react";
+import AppRouter from "./router";
+
+import Navbar from "./components/Navbar";
+import { Layout } from "antd";
+
+import styled, { css } from "styled-components/macro";
+
+const { Header, Content, Footer } = Layout;
+
+const StyledHeader = styled(Header)`
+  background: #fff;
+`;
+
+const StyledLayout = styled(Layout)`
+  background: #fff;
+`;
+
+const StyledContent = styled(Content)`
+  padding: 0 50px;
+`;
+
+const StyledFooter = styled(Footer)`
+  background: #fff;
+  text-align: center;
+`;
+
+const ContentDiv = styled.div`
+  padding: 24;
+  min-height: calc(100vh - 64px - 69px);
+`;
 
 class App extends Component {
   render() {
     return (
-      <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <p>
-            Edit <code>src/App.tsx</code> and save to reload.
-          </p>
-          <a
-            className="App-link"
-            href="https://reactjs.org"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Learn React
-          </a>
-        </header>
-      </div>
+      <StyledLayout>
+        <StyledHeader>
+          <Navbar />
+        </StyledHeader>
+        <StyledContent>
+          <ContentDiv>
+            <AppRouter />
+          </ContentDiv>
+        </StyledContent>
+        <StyledFooter>Kerckhoff</StyledFooter>
+      </StyledLayout>
     );
   }
 }
