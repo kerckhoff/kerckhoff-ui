@@ -2,6 +2,7 @@ import React from "react";
 import { Menu, Icon, Row, Col } from "antd";
 
 import styled from "styled-components/macro";
+import { OAuthLogin } from "./Login";
 
 const SubMenu = Menu.SubMenu;
 const MenuItemGroup = Menu.ItemGroup;
@@ -57,6 +58,9 @@ const Navbar = () => {
             >
               Navigation Four - Link
             </a>
+          </Menu.Item>
+          <Menu.Item key="login">
+            <OAuthLogin render={() => <div>LOGIN</div>}/>
           </Menu.Item>
         </Menu>
       </Col>
