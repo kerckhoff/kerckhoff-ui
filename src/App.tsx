@@ -5,6 +5,7 @@ import Navbar from "./components/Navbar";
 import { Layout } from "antd";
 
 import styled, { css } from "styled-components/macro";
+import { GlobalStateWrapper } from "./providers";
 
 const { Header, Content, Footer } = Layout;
 
@@ -33,6 +34,7 @@ const ContentDiv = styled.div`
 class App extends Component {
   render() {
     return (
+      <GlobalStateWrapper>
       <StyledLayout>
         <StyledHeader>
           <Navbar />
@@ -44,6 +46,7 @@ class App extends Component {
         </StyledContent>
         <StyledFooter>Kerckhoff</StyledFooter>
       </StyledLayout>
+      </GlobalStateWrapper>
     );
   }
 }

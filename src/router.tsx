@@ -1,11 +1,16 @@
 import React from "react";
-import { BrowserRouter as Router, Route, Link } from "react-router-dom";
+import { Router, Route, Link, Switch } from "react-router-dom";
+import { LoginCallbackPage } from "./pages/LoginCallbackPage";
+import { history } from "./commons/history";
 
 const Index = () => <h2>Home</h2>;
 
 const AppRouter = () => (
-  <Router>
-    <Route path="/" exact component={Index} />
+  <Router history={history}>
+    <Switch>
+      <Route path="/" exact component={Index} />
+      <Route path="/auth/google/callback" component={LoginCallbackPage} />
+    </Switch>
   </Router>
 );
 
