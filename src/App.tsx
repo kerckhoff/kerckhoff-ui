@@ -35,17 +35,17 @@ class App extends Component {
   render() {
     return (
       <GlobalStateWrapper>
-      <StyledLayout>
-        <StyledHeader>
-          <Navbar />
-        </StyledHeader>
-        <StyledContent>
-          <ContentDiv>
-            <AppRouter />
-          </ContentDiv>
-        </StyledContent>
-        <StyledFooter>Kerckhoff</StyledFooter>
-      </StyledLayout>
+        <StyledLayout>
+          <StyledHeader>
+            <Navbar />
+          </StyledHeader>
+          <StyledContent>
+            <ContentDiv>
+              <AppRouter />
+            </ContentDiv>
+          </StyledContent>
+          <StyledFooter>Kerckhoff</StyledFooter>
+        </StyledLayout>
       </GlobalStateWrapper>
     );
   }

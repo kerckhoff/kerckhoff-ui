@@ -3,68 +3,78 @@ import { Menu, Icon, Row, Col } from "antd";
 
 import styled from "styled-components/macro";
 import { OAuthLogin } from "./Login";
+import { IGlobalState, GlobalState } from "../providers";
+import { SubMenuProps } from "antd/lib/menu/SubMenu";
 
 const SubMenu = Menu.SubMenu;
 const MenuItemGroup = Menu.ItemGroup;
 
-const Logo = styled.div`
-  width: 100px;
-  height: 30px;
-  h3 {
-    line-height: 48px;
-  }
+const LogoSpan = styled.span`
+  font-weight: bold;
+  font-size: 1rem;
+  padding-right: 20px;
 `;
+
+const Logo = () => {
+  return <LogoSpan>Kerckhoff</LogoSpan>;
+};
 
 const Navbar = () => {
   return (
     <Row>
-      <Col span={3}>
-        <Logo>
-          <h3>Kerckhoff</h3>
-        </Logo>
-      </Col>
       <Col>
-        <Menu mode="horizontal">
-          <Menu.Item key="mail">
-            <Icon type="mail" />
-            Navigation One
-          </Menu.Item>
-          <Menu.Item key="app" disabled>
-            <Icon type="appstore" />
-            Navigation Two
-          </Menu.Item>
-          <SubMenu
-            title={
-              <span className="submenu-title-wrapper">
-                <Icon type="setting" />
-                Navigation Three - Submenu
-              </span>
-            }
-          >
-            <MenuItemGroup title="Item 1">
-              <Menu.Item key="setting:1">Option 1</Menu.Item>
-              <Menu.Item key="setting:2">Option 2</Menu.Item>
-            </MenuItemGroup>
-            <MenuItemGroup title="Item 2">
-              <Menu.Item key="setting:3">Option 3</Menu.Item>
-              <Menu.Item key="setting:4">Option 4</Menu.Item>
-            </MenuItemGroup>
-          </SubMenu>
-          <Menu.Item key="alipay">
-            <a
-              href="https://ant.design"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Navigation Four - Link
-            </a>
-          </Menu.Item>
-          <Menu.Item key="login">
-            <OAuthLogin render={() => <div>LOGIN</div>}/>
-          </Menu.Item>
-        </Menu>
+        <GlobalState.Consumer>
+          {globalState => {
+            return <NavbarMenu gs={globalState} />;
+          }}
+        </GlobalState.Consumer>
       </Col>
     </Row>
+  );
+};
+
+const NavbarMenu = (props: { gs: IGlobalState }) => {
+  return props.gs.user ? <LoggedInMenu gs={props.gs} /> : <PublicMenu />;
+};
+
+const PublicMenu = () => {
+  return (
+    <Menu mode="horizontal">
+      <Logo />
+
+      <Menu.Item key="login">
+        <OAuthLogin />
+      </Menu.Item>
+    </Menu>
+  );
+};
+
+const LoggedInMenu = (props: { gs: IGlobalState }) => {
+  return (
+    <Menu mode="horizontal">
+      <Logo />
+
+      <>
+        <span style={{ float: "right" }}>Hi {props.gs.user!.firstName!}!</span>
+      </>
+      <SubMenu
+        title={
+          <span className="submenu-title-wrapper">
+            <Icon type="folder" />
+            {props.gs.selectedPackageSet
+              ? props.gs.selectedPackageSet.slug
+              : "Create A New Package Set"}
+          </span>
+        }
+      >
+        <MenuItemGroup title="Package Sets">
+          {(props.gs.packageSets ? props.gs.packageSets : []).map(ps => {
+            return <Menu.Item key={ps.id}>{ps.slug}</Menu.Item>;
+          })}
+        </MenuItemGroup>
+        <Menu.Item key="create-new">New Package Set</Menu.Item>
+      </SubMenu>
+    </Menu>
   );
 };
 
