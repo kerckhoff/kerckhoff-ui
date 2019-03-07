@@ -9,8 +9,8 @@ const AppRouter = () => (
   <Router history={history}>
     <Switch>
       <Route path="/" exact component={Homepage} />
-      <Route path="/:packageSetId/:packageId" component={PackageDetailPage} />
       <Route path="/auth/google/callback" component={LoginCallbackPage} />
+      <Route path="/:packageSetId/:packageId" component={PackageDetailPage} />
     </Switch>
   </Router>
 );
