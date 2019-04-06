@@ -19,6 +19,8 @@ export interface IPackageSet {
   metadata: IPackageMeta;
 }
 
+export type IPackageSetInit = Pick<IPackageSet, "slug" | "metadata">;
+
 export interface IPackageResponse {
   count: number;
   next: URL;

@@ -1,10 +1,11 @@
 import React from "react";
-import { Menu, Icon, Row, Col } from "antd";
+import { Menu, Icon, Row, Col, Modal } from "antd";
 
 import styled from "styled-components/macro";
 import { OAuthLogin } from "./Login";
 import { IGlobalState, GlobalState } from "../providers";
 import { SubMenuProps } from "antd/lib/menu/SubMenu";
+import { NewPackageSetModal } from "./NewPackageSetModal";
 
 const SubMenu = Menu.SubMenu;
 const MenuItemGroup = Menu.ItemGroup;
@@ -49,33 +50,65 @@ const PublicMenu = () => {
   );
 };
 
-const LoggedInMenu = (props: { gs: IGlobalState }) => {
-  return (
-    <Menu mode="horizontal">
-      <Logo />
+interface ILoggedMenuState {
+  showCreatePackageSetModal: boolean;
+}
 
+class LoggedInMenu extends React.Component<
+  { gs: IGlobalState },
+  ILoggedMenuState
+> {
+  state = {
+    showCreatePackageSetModal: false
+  };
+
+  setCreatePackageSetModalOpen = (cond: boolean) =>
+    this.setState({ showCreatePackageSetModal: cond });
+
+  render() {
+    const { gs } = this.props;
+
+    return (
       <>
-        <span style={{ float: "right" }}>Hi {props.gs.user!.firstName!}!</span>
+        <Menu mode="horizontal">
+          <Logo />
+          <>
+            <span style={{ float: "right" }}>Hi {gs.user!.firstName!}!</span>
+          </>
+          <SubMenu
+            title={
+              <span className="submenu-title-wrapper">
+                <Icon type="folder" />
+                {gs.selectedPackageSet
+                  ? gs.selectedPackageSet.slug
+                  : "Create A New Package Set"}
+              </span>
+            }
+          >
+            <MenuItemGroup title="Package Sets">
+              {(gs.packageSets ? gs.packageSets : []).map(ps => {
+                return <Menu.Item key={ps.id}>{ps.slug}</Menu.Item>;
+              })}
+            </MenuItemGroup>
+            <Menu.Item
+              key="create-new"
+              onClick={() => this.setCreatePackageSetModalOpen(true)}
+            >
+              New Package Set
+            </Menu.Item>
+          </SubMenu>
+        </Menu>
+        {/* It seems that for whatever f**king reason,
+        putting modal inside of a menu kills antd's normal behavior of state updating DOM */}
+        <NewPackageSetModal
+          isOpen={this.state.showCreatePackageSetModal}
+          setOpen={(cond: boolean) =>
+            this.setState({ showCreatePackageSetModal: cond })
+          }
+        />
       </>
-      <SubMenu
-        title={
-          <span className="submenu-title-wrapper">
-            <Icon type="folder" />
-            {props.gs.selectedPackageSet
-              ? props.gs.selectedPackageSet.slug
-              : "Create A New Package Set"}
-          </span>
-        }
-      >
-        <MenuItemGroup title="Package Sets">
-          {(props.gs.packageSets ? props.gs.packageSets : []).map(ps => {
-            return <Menu.Item key={ps.id}>{ps.slug}</Menu.Item>;
-          })}
-        </MenuItemGroup>
-        <Menu.Item key="create-new">New Package Set</Menu.Item>
-      </SubMenu>
-    </Menu>
-  );
-};
+    );
+  }
+}
 
 export default Navbar;

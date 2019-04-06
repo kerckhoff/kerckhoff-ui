@@ -1,5 +1,10 @@
 import { AxiosInstance } from "axios";
-import { IPackageSet, IPackageResponse, IPackage } from "../commons/interfaces";
+import {
+  IPackageSet,
+  IPackageSetInit,
+  IPackageResponse,
+  IPackage
+} from "../commons/interfaces";
 
 export class ModelOperations {
   private axios: AxiosInstance;
@@ -28,5 +33,9 @@ export class ModelOperations {
     return this.axios.post<IPackage>(
       `/package-sets/${ps.slug}/packages/${p.slug}/preview/`
     );
+  }
+
+  async createPackageSet(ps: IPackageSetInit) {
+    return this.axios.post<IPackage>(`/package-sets/`, ps);
   }
 }

@@ -8,6 +8,7 @@ import {
 import Axios, { AxiosInstance } from "axios";
 import { message } from "antd";
 import { ModelOperations } from "../api/ModelOperations";
+import { notifyError } from "../commons/notify";
 
 export const GlobalState = (React.createContext(
   {}
@@ -23,6 +24,22 @@ export interface IGlobalState {
   syncPackageSets: () => Promise<void>;
 }
 
+const objToReadable = (o: { [key: string]: any }) => {
+  const segs: string[] = [];
+  for (const k in o) {
+    segs.push(
+      `${k}: ${
+        typeof o[k] === "string"
+          ? o[k]
+          : Array.isArray(o[k])
+          ? o[k].join(", ")
+          : JSON.stringify(o[k])
+      }`
+    );
+  }
+  return segs.join("\n");
+};
+
 const createAuthenticatedAxios = (token: string) => {
   const axios = Axios.create({
     baseURL: API_BASE,
@@ -30,9 +47,15 @@ const createAuthenticatedAxios = (token: string) => {
   });
 
   axios.interceptors.response.use(undefined, error => {
-    if (!error.response) {
-      message.error("An unknown error has occurred.");
-      console.error(error);
+    console.error(error);
+    if (error.response) {
+      notifyError(`${error.response.status} ERROR:
+${objToReadable(error.response.data)}`);
+      // message.error("An unknown error has occurred.");
+    } else if (error.request) {
+      notifyError(`Request error: ${error.request}`);
+    } else {
+      notifyError(`Error: ${error.message}`);
     }
   });
 
