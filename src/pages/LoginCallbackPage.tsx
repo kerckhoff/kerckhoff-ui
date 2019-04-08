@@ -31,21 +31,21 @@ export class LoginCallbackPage extends React.Component<RouteProps> {
           <LoginCallbackPageInternal {...this.props} context={context} />
         )}
       </GlobalState.Consumer>
-    )
+    );
   }
 }
 
-export class LoginCallbackPageInternal extends React.Component<RouteProps & {context: IGlobalState}> {
+export class LoginCallbackPageInternal extends React.Component<
+  RouteProps & { context: IGlobalState }
+> {
   async componentDidMount() {
-    const query = 
-      qs.parse(
-        this.props.location!.search,
-        { ignoreQueryPrefix: true }
-      ) as IOAuthCallbackInfo;
+    const query = qs.parse(this.props.location!.search, {
+      ignoreQueryPrefix: true
+    }) as IOAuthCallbackInfo;
     console.log(query);
     try {
       const userInfoRes = await axios.get(OAUTH_URL, {
-        params: query,
+        params: query
       });
       const userRepr = userInfoRes.data as IUserRepr;
       console.log(this.props.context);
@@ -54,7 +54,7 @@ export class LoginCallbackPageInternal extends React.Component<RouteProps & {con
         username: userRepr.user.username,
         firstName: userRepr.user.first_name,
         lastName: userRepr.user.last_name,
-        token: userRepr.token,
+        token: userRepr.token
       });
       history.push("/");
     } catch (e) {
@@ -62,6 +62,6 @@ export class LoginCallbackPageInternal extends React.Component<RouteProps & {con
     }
   }
   render() {
-    return <div />
+    return <div />;
   }
 }

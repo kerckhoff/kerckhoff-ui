@@ -32,12 +32,16 @@ export class MetaInfoCard extends React.Component<
 
     this.setState({
       edit: !!!gdrive,
-      gdrive_id: gdrive ? this.props.ps.metadata.google_drive
-        ? this.props.ps.metadata.google_drive.folder_id
-        : undefined : undefined,
-      gdrive_url: gdrive ? this.props.ps.metadata.google_drive
-        ? this.props.ps.metadata.google_drive.folder_url
-        : undefined : undefined
+      gdrive_id: gdrive
+        ? this.props.ps.metadata.google_drive
+          ? this.props.ps.metadata.google_drive.folder_id
+          : undefined
+        : undefined,
+      gdrive_url: gdrive
+        ? this.props.ps.metadata.google_drive
+          ? this.props.ps.metadata.google_drive.folder_url
+          : undefined
+        : undefined
     });
   }
 
@@ -121,7 +125,11 @@ export class MetaInfoCard extends React.Component<
             {"  "}Google Drive
             <a
               target="_blank"
-              href={this.props.ps.metadata.google_drive ? this.props.ps.metadata.google_drive.folder_url : undefined}
+              href={
+                this.props.ps.metadata.google_drive
+                  ? this.props.ps.metadata.google_drive.folder_url
+                  : undefined
+              }
             >
               <Icon
                 style={{ float: "right", paddingTop: "0.25em" }}
