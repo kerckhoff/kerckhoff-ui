@@ -102,6 +102,7 @@ export class PackageDetailPageInternal extends React.Component<
       const currentPs = await this.props.context.setPackageSet(
         currentPackageSetSlug
       );
+
       // @TODO: currently ignoring missing packageset, should display 404
       const packageResponse = await ops.getPackageDetails(
         currentPs!,
