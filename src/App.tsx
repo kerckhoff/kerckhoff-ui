@@ -6,6 +6,8 @@ import { Layout } from "antd";
 
 import styled, { css } from "styled-components/macro";
 import { GlobalStateWrapper } from "./providers";
+import { Router } from "react-router";
+import { history } from "./commons/history";
 
 const { Header, Content, Footer } = Layout;
 
@@ -35,17 +37,19 @@ class App extends Component {
   render() {
     return (
       <GlobalStateWrapper>
-        <StyledLayout>
-          <StyledHeader>
-            <Navbar />
-          </StyledHeader>
-          <StyledContent>
-            <ContentDiv>
-              <AppRouter />
-            </ContentDiv>
-          </StyledContent>
-          <StyledFooter>Kerckhoff</StyledFooter>
-        </StyledLayout>
+        <Router history={history}>
+          <StyledLayout>
+            <StyledHeader>
+              <Navbar />
+            </StyledHeader>
+            <StyledContent>
+              <ContentDiv>
+                <AppRouter />
+              </ContentDiv>
+            </StyledContent>
+            <StyledFooter>Kerckhoff</StyledFooter>
+          </StyledLayout>
+        </Router>
       </GlobalStateWrapper>
     );
   }

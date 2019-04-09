@@ -21,6 +21,7 @@ export interface IGlobalState {
   selectedPackageSet?: IPackageSet;
   modelOps?: ModelOperations;
   updateUser: (info: Partial<IUser>) => void;
+  setPackageSet: (id: string) => Promise<IPackageSet | undefined>;
   syncPackageSets: () => Promise<void>;
 }
 
@@ -67,9 +68,28 @@ export class GlobalStateWrapper extends React.Component<{}, IGlobalState> {
     super(props);
     this.state = {
       updateUser: this.updateUser,
-      syncPackageSets: this.syncPackageSets
+      syncPackageSets: this.syncPackageSets,
+      setPackageSet: this.setPackageSet
     };
   }
+
+  setPackageSet = async (slug: string) => {
+    if (!this.state.packageSets) {
+      await this.syncPackageSets();
+    }
+
+    const resultPackageSet = this.state.packageSets!.find(v => v.slug === slug);
+    if (!resultPackageSet) {
+      notifyError(`Package Set ${slug} is not found!`);
+    } else {
+      if (this.state.selectedPackageSet!.slug !== slug) {
+        this.setState({
+          selectedPackageSet: resultPackageSet
+        });
+      }
+      return resultPackageSet;
+    }
+  };
 
   syncPackageSets = async () => {
     const axios = this.state.authenticatedAxios;

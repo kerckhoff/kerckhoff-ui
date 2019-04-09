@@ -1,6 +1,6 @@
 import { Col, Row } from "antd";
 import React from "react";
-import { RouteProps } from "react-router";
+import { RouteProps, RouteChildrenProps } from "react-router";
 import { IPackage } from "../commons/interfaces";
 import { GlobalState, IGlobalState } from "../providers";
 import { MetaInfoCard } from "../components/PSMetaInfoCard";
@@ -9,7 +9,7 @@ import { PackageCard } from "../components/PackageCard";
 import { ScrollyRow, ScrollyItem, SubHeader } from "../components/UIFragments";
 import { Link } from "react-router-dom";
 
-export class Homepage extends React.Component<RouteProps> {
+export class Homepage extends React.Component<RouteChildrenProps> {
   render() {
     return (
       <GlobalState.Consumer>
@@ -20,21 +20,25 @@ export class Homepage extends React.Component<RouteProps> {
 }
 
 export class HomepageInternal extends React.Component<
-  RouteProps & { context: IGlobalState },
+  RouteChildrenProps & { context: IGlobalState },
   {
     displayedPackages: IPackage[];
+    is404: boolean;
   }
 > {
   constructor(props: any) {
     super(props);
-    this.state = { displayedPackages: [] };
+    this.state = { displayedPackages: [], is404: false };
   }
 
-  componentDidUpdate(prevProps: { context: IGlobalState }) {
+  componentDidUpdate(
+    prevProps: RouteChildrenProps & { context: IGlobalState }
+  ) {
     // use props
     if (
       prevProps.context.selectedPackageSet !==
-      this.props.context.selectedPackageSet
+        this.props.context.selectedPackageSet ||
+      prevProps.match!.params !== this.props.match!.params
     ) {
       this.syncPackages();
     }
@@ -46,13 +50,25 @@ export class HomepageInternal extends React.Component<
 
   async syncPackages(page = 1) {
     const ops = this.props.context.modelOps;
-    const ps = this.props.context.selectedPackageSet;
+    const ps = this.props.context.packageSets;
+
+    const params: any = this.props.match!.params;
+    const currentPackageSetSlug = params.packageSetId;
+
     if (ops && ps) {
-      const packageResponse = await ops.getPackages(ps);
-      console.log("Got packages:", packageResponse);
-      this.setState({
-        displayedPackages: packageResponse.data.results
-      });
+      const ps = await this.props.context.setPackageSet(currentPackageSetSlug);
+
+      if (ps) {
+        const packageResponse = await ops.getPackages(ps);
+        console.log("Got packages:", packageResponse);
+        this.setState({
+          displayedPackages: packageResponse.data.results
+        });
+      } else {
+        this.setState({
+          is404: true
+        });
+      }
     }
   }
 

@@ -78,26 +78,41 @@ export class PackageDetailPageInternal extends React.Component<
   RouteChildrenProps & { context: IGlobalState },
   {
     package?: IPackage;
+    is404: Boolean;
   }
 > {
   constructor(props: any) {
     super(props);
     this.state = {
-      package: undefined
+      package: undefined,
+      is404: false
     };
   }
 
   async getPackageDetails() {
-    const ops = this.props.context.modelOps;
-    const ps = this.props.context.selectedPackageSet;
     const params: any = this.props.match!.params;
+    const currentPackageSetSlug = params.packageSetId;
+
+    const ops = this.props.context.modelOps;
+    const ps = this.props.context.packageSets;
 
     const currentSlug = params.packageId;
 
     if (ops && ps) {
-      const packageResponse = await ops.getPackageDetails(ps, currentSlug);
-      console.log("Got package:", packageResponse.data);
-      this.setState({ package: packageResponse.data });
+      const currentPs = await this.props.context.setPackageSet(
+        currentPackageSetSlug
+      );
+      // @TODO: currently ignoring missing packageset, should display 404
+      const packageResponse = await ops.getPackageDetails(
+        currentPs!,
+        currentSlug
+      );
+      if (packageResponse) {
+        console.log("Got package:", packageResponse.data);
+        this.setState({ package: packageResponse.data });
+      } else {
+        this.setState({ is404: true });
+      }
     }
   }
 

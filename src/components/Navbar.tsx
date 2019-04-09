@@ -6,6 +6,7 @@ import { OAuthLogin } from "./Login";
 import { IGlobalState, GlobalState } from "../providers";
 import { SubMenuProps } from "antd/lib/menu/SubMenu";
 import { NewPackageSetModal } from "./NewPackageSetModal";
+import { Link } from "react-router-dom";
 
 const SubMenu = Menu.SubMenu;
 const MenuItemGroup = Menu.ItemGroup;
@@ -87,7 +88,11 @@ class LoggedInMenu extends React.Component<
           >
             <MenuItemGroup title="Package Sets">
               {(gs.packageSets ? gs.packageSets : []).map(ps => {
-                return <Menu.Item key={ps.id}>{ps.slug}</Menu.Item>;
+                return (
+                  <Menu.Item key={ps.id}>
+                    <Link to={`/${ps.slug}`}>{ps.slug} </Link>
+                  </Menu.Item>
+                );
               })}
             </MenuItemGroup>
             <Menu.Item
