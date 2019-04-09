@@ -49,13 +49,14 @@ export class LoginCallbackPageInternal extends React.Component<
       });
       const userRepr = userInfoRes.data as IUserRepr;
       console.log(this.props.context);
-      this.props.context.updateUser({
+      await this.props.context.updateUser({
         id: userRepr.user.id,
         username: userRepr.user.username,
         firstName: userRepr.user.first_name,
         lastName: userRepr.user.last_name,
         token: userRepr.token
       });
+      await this.props.context.refreshStateFromLocalStorage();
       history.push("/");
     } catch (e) {
       console.error(e);

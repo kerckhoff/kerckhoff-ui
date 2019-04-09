@@ -9,6 +9,7 @@ import Axios, { AxiosInstance } from "axios";
 import { message } from "antd";
 import { ModelOperations } from "../api/ModelOperations";
 import { notifyError } from "../commons/notify";
+import { deferred } from "../util";
 
 export const GlobalState = (React.createContext(
   {}
@@ -20,9 +21,10 @@ export interface IGlobalState {
   packageSets?: IPackageSet[];
   selectedPackageSet?: IPackageSet;
   modelOps?: ModelOperations;
-  updateUser: (info: Partial<IUser>) => void;
+  updateUser: (info: Partial<IUser>) => Promise<void>;
   setPackageSet: (id: string) => Promise<IPackageSet | undefined>;
   syncPackageSets: () => Promise<void>;
+  refreshStateFromLocalStorage: () => Promise<void>;
 }
 
 const objToReadable = (o: { [key: string]: any }) => {
@@ -69,7 +71,8 @@ export class GlobalStateWrapper extends React.Component<{}, IGlobalState> {
     this.state = {
       updateUser: this.updateUser,
       syncPackageSets: this.syncPackageSets,
-      setPackageSet: this.setPackageSet
+      setPackageSet: this.setPackageSet,
+      refreshStateFromLocalStorage: this.refreshStateFromLocalStorage
     };
   }
 
@@ -103,30 +106,46 @@ export class GlobalStateWrapper extends React.Component<{}, IGlobalState> {
         : results.data.results[0]
         ? results.data.results[0]
         : undefined;
-      this.setState({
-        packageSets: results.data.results,
-        selectedPackageSet: newPackageSet
-      });
+      const p = deferred();
+      this.setState(
+        {
+          packageSets: results.data.results,
+          selectedPackageSet: newPackageSet
+        },
+        () => p.resolve()
+      );
+      return p.promise;
     } else {
       console.error("Cannot sync packagesets when not logged in!");
     }
   };
 
-  updateUser = (info: Partial<IUser>) => {
+  updateUser = async (info: Partial<IUser>) => {
     const newUser = {
       ...(this.state.user || {}),
       ...info
     };
     const axios = createAuthenticatedAxios(newUser.token!);
     localStorage.setItem(OAUTH_LOCAL_STORAGE_KEY, JSON.stringify(newUser));
-    this.setState({
-      user: newUser,
-      authenticatedAxios: axios,
-      modelOps: new ModelOperations(axios)
-    });
+    const p = deferred();
+    this.setState(
+      {
+        user: newUser,
+        authenticatedAxios: axios,
+        modelOps: new ModelOperations(axios)
+      },
+      () => {
+        p.resolve();
+      }
+    );
+    return p.promise;
   };
 
   componentDidMount() {
+    this.refreshStateFromLocalStorage();
+  }
+
+  refreshStateFromLocalStorage: () => Promise<void> = async () => {
     const loginJSON = localStorage.getItem(OAUTH_LOCAL_STORAGE_KEY);
     if (loginJSON) {
       try {
@@ -139,17 +158,22 @@ export class GlobalStateWrapper extends React.Component<{}, IGlobalState> {
             authenticatedAxios: axios,
             modelOps: new ModelOperations(axios)
           },
-          () => {
-            this.syncPackageSets().catch(err => {
+          async () => {
+            try {
+              await this.syncPackageSets();
+            } catch (err) {
               console.error(err);
-            });
+            }
+            // this.syncPackageSets().catch(err => {
+            //   console.error(err);
+            // });
           }
         );
       } catch {}
     } else {
       console.log("User is not logged in.");
     }
-  }
+  };
 
   render() {
     return (
