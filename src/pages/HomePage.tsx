@@ -56,10 +56,12 @@ export class HomepageInternal extends React.Component<
     const currentPackageSetSlug = params.packageSetId;
 
     if (ops && ps) {
-      const ps = await this.props.context.setPackageSet(currentPackageSetSlug);
+      const currentPs = currentPackageSetSlug
+        ? await this.props.context.setPackageSet(currentPackageSetSlug)
+        : this.props.context.selectedPackageSet;
 
       if (ps) {
-        const packageResponse = await ops.getPackages(ps);
+        const packageResponse = await ops.getPackages(currentPs!);
         console.log("Got packages:", packageResponse);
         this.setState({
           displayedPackages: packageResponse.data.results
