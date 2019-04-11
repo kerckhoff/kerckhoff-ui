@@ -19,7 +19,7 @@ export interface IPackageSet {
   metadata: IPackageMeta;
 }
 
-export type IPackageSetInit = Pick<IPackageSet, "slug" | "metadata">;
+export type IPackageSetInit = Pick<IPackageSet, "slug">;
 
 export interface IPackageResponse {
   count: number;

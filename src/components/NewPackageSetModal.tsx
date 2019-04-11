@@ -12,7 +12,6 @@ type INewPackageSetModalProps = {
 } & FormComponentProps;
 
 const SLUG_KEY = "slug";
-const METADATA_KEY = "metadata";
 
 class BaseNewPackageSetModal extends React.Component<INewPackageSetModalProps> {
   handleSubmit = (ops: ModelOperations) => (e: FormEvent) => {
@@ -23,8 +22,7 @@ class BaseNewPackageSetModal extends React.Component<INewPackageSetModalProps> {
       }
 
       const res = await ops.createPackageSet({
-        slug: values[SLUG_KEY],
-        metadata: values[METADATA_KEY] || ""
+        slug: values[SLUG_KEY]
       });
 
       // res == undefined if error (intercepted)
@@ -57,17 +55,6 @@ class BaseNewPackageSetModal extends React.Component<INewPackageSetModalProps> {
                     {
                       required: true,
                       message: "Please provide a slug!",
-                      whitespace: true
-                    }
-                  ]
-                })(<Input />)}
-              </Form.Item>
-              <Form.Item label="Metadata">
-                {getFieldDecorator(METADATA_KEY, {
-                  rules: [
-                    {
-                      required: false,
-                      message: "Package metadata",
                       whitespace: true
                     }
                   ]
