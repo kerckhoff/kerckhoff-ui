@@ -24,6 +24,7 @@ import {
 import CollapsePanel from "antd/lib/collapse/CollapsePanel";
 import { Link } from "react-router-dom";
 import ReactJson from "react-json-view";
+import { DUMMY_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_VersionTimeline } from "../components/VersionTimeline";
 
 const TreeNode = Tree.TreeNode;
 
@@ -236,7 +237,9 @@ export class PackageDetailPageInternal extends React.Component<
 
                 <Divider />
 
-                <SubHeader>CURRENT VERSION</SubHeader>
+                <SubHeader>VERSIONS</SubHeader>
+
+                <DUMMY_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_VersionTimeline />
               </Col>
               <Col span={18}>
                 {cachedProperties &&
