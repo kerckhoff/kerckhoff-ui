@@ -44,7 +44,7 @@ const PublicMenu = () => {
     <Menu mode="horizontal">
       <Logo />
 
-      <Menu.Item key="login">
+      <Menu.Item style={{ float: "right" }} key="login">
         <OAuthLogin />
       </Menu.Item>
     </Menu>

@@ -3,8 +3,15 @@ import {
   IPackageSet,
   IPackageSetInit,
   IPackageResponse,
-  IPackage
+  IPackage,
+  IPackageSetResponse
 } from "../commons/interfaces";
+
+type PackageOrderingField =
+  | "slug"
+  | "last_fetched_date"
+  | "created_at"
+  | "updated_at";
 
 export class ModelOperations {
   private axios: AxiosInstance;
@@ -17,9 +24,20 @@ export class ModelOperations {
     return this.axios.patch<IPackageSet>(`/package-sets/${ps.slug}/`, patch);
   }
 
-  async getPackages(ps: IPackageSet) {
+  async fetchPackagesForPackageSet(ps: IPackageSet) {
+    return this.axios.post<IPackageResponse>(
+      `/package-sets/${ps.slug}/sync_gdrive/`
+    );
+  }
+
+  async getPackages(
+    ps: IPackageSet,
+    ordering: PackageOrderingField = "updated_at",
+    descending: boolean = true
+  ) {
     return this.axios.get<IPackageResponse>(
-      `/package-sets/${ps.slug}/packages/`
+      `/package-sets/${ps.slug}/packages/`,
+      { params: { ordering: `${descending ? "-" : ""}${ordering}` } }
     );
   }
 
@@ -37,5 +55,11 @@ export class ModelOperations {
 
   async createPackageSet(ps: IPackageSetInit) {
     return this.axios.post<IPackage>(`/package-sets/`, ps);
+  }
+
+  async getPackageSets(ordering: PackageOrderingField = "slug") {
+    return this.axios.get<IPackageSetResponse>(`/package-sets/`, {
+      params: { ordering }
+    });
   }
 }

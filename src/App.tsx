@@ -47,7 +47,7 @@ class App extends Component {
                 <AppRouter />
               </ContentDiv>
             </StyledContent>
-            <StyledFooter>Kerckhoff</StyledFooter>
+            <StyledFooter>The Kerckhoff Project 2019</StyledFooter>
           </StyledLayout>
         </Router>
       </GlobalStateWrapper>

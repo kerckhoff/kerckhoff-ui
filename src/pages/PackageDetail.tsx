@@ -12,7 +12,7 @@ import {
   Collapse,
   Tabs
 } from "antd";
-import { SubHeader, ScrollyRow, ScrollyItem } from "../components/UIFragments";
+import { SubHeader, ScrollyBox, ScrollyItem } from "../components/UIFragments";
 import { IPackage, ICachedPackageItem } from "../commons/interfaces";
 import styled from "styled-components";
 import _ from "lodash";
@@ -22,6 +22,8 @@ import {
   PackageSetItemType
 } from "../commons/utils";
 import CollapsePanel from "antd/lib/collapse/CollapsePanel";
+import { Link } from "react-router-dom";
+import ReactJson from "react-json-view";
 
 const TreeNode = Tree.TreeNode;
 
@@ -41,7 +43,8 @@ export class PackageDetailPage extends React.Component<RouteChildrenProps> {
 
 const SlashSpan = styled.span`
   font-size: 1.2em;
-  padding: 0 0.1em;
+  padding-left: 0.2em;
+  padding-right: 0.1em;
   color: #999;
 `;
 
@@ -73,6 +76,11 @@ const TextInfoBox = ({ pi }: { pi: ICachedPackageItem }) => {
     </Col>
   );
 };
+
+const TextContent = styled.div`
+  max-height: 500px;
+  overflow-y: scroll;
+`;
 
 export class PackageDetailPageInternal extends React.Component<
   RouteChildrenProps & { context: IGlobalState },
@@ -197,7 +205,9 @@ export class PackageDetailPageInternal extends React.Component<
               <Col span={6}>
                 <SubHeader>PACKAGE INFO</SubHeader>
                 <h3>
-                  {this.state.package.package_set}
+                  <Link to={`/${this.state.package.package_set}`}>
+                    {this.state.package.package_set}
+                  </Link>
                   <SlashSpan>/</SlashSpan>
                   {this.state.package.slug}
                 </h3>
@@ -215,6 +225,15 @@ export class PackageDetailPageInternal extends React.Component<
                     ? `Last updated ${lastFetchedDate.fromNow()}`
                     : "The Package has never been synced before!"}
                 </SmallText>
+                <SmallText>
+                  <a
+                    href={this.state.package.metadata.google_drive!.folder_url}
+                    target="_blank"
+                  >
+                    See folder in Google Drive
+                  </a>
+                </SmallText>
+
                 <Divider />
 
                 <SubHeader>CURRENT VERSION</SubHeader>
@@ -228,7 +247,7 @@ export class PackageDetailPageInternal extends React.Component<
                   >
                     {cachedProperties.text && (
                       <CollapsePanel
-                        header={<CollapseTitle>Text</CollapseTitle>}
+                        header={<CollapseTitle>Text/Data</CollapseTitle>}
                         key="text"
                       >
                         <Tabs defaultActiveKey="1" tabPosition="left">
@@ -237,12 +256,18 @@ export class PackageDetailPageInternal extends React.Component<
                               <TabPane tab={pi.title} key={`${i + 1}`}>
                                 <TextInfoBox pi={pi} />
                                 <Divider />
-                                Lorem ipsum dolor sit amet, consectetur
-                                adipisicing elit. Vero minus et corporis,
-                                praesentium illo quae, dicta soluta aspernatur,
-                                adipisci architecto omnis facilis? Deserunt,
-                                dignissimos. Quam deserunt tempora officiis enim
-                                eius.
+                                <ReactJson
+                                  style={{ marginBottom: "1em" }}
+                                  src={pi.content_plain.data}
+                                  name={"data"}
+                                  collapsed={true}
+                                  enableClipboard={false}
+                                />
+                                <TextContent
+                                  dangerouslySetInnerHTML={{
+                                    __html: pi.content_plain.html
+                                  }}
+                                />
                               </TabPane>
                             );
                           })}
@@ -255,7 +280,7 @@ export class PackageDetailPageInternal extends React.Component<
                         header={<CollapseTitle>Images</CollapseTitle>}
                         key="images"
                       >
-                        <ScrollyRow>
+                        <ScrollyBox>
                           {cachedProperties.image!.map(p => {
                             return (
                               <ScrollyItem key={p.title}>
@@ -281,12 +306,12 @@ export class PackageDetailPageInternal extends React.Component<
                               </ScrollyItem>
                             );
                           })}
-                        </ScrollyRow>
+                        </ScrollyBox>
                       </CollapsePanel>
                     )}
                   </Collapse>
                 ) : (
-                  <h2>Nothing to preview!</h2>
+                  <h2>The package has never been synced before!</h2>
                 )}
               </Col>
             </>

@@ -14,9 +14,15 @@ const WarnText = styled.p`
   font-weight: bold;
 `;
 
+interface IMetaInfoCardState {
+  edit: boolean;
+  gdrive_url?: string;
+  gdrive_id?: string;
+}
+
 export class MetaInfoCard extends React.Component<
   { ps: IPackageSet } & { context: IGlobalState },
-  { edit: boolean; gdrive_url?: string; gdrive_id?: string }
+  IMetaInfoCardState
 > {
   constructor(props: any) {
     super(props);
@@ -43,6 +49,14 @@ export class MetaInfoCard extends React.Component<
           : undefined
         : undefined
     });
+  }
+
+  async componentDidUpdate(
+    prevProps: { ps: IPackageSet } & { context: IGlobalState }
+  ) {
+    if (prevProps.ps.id !== this.props.ps.id) {
+      this.componentDidMount();
+    }
   }
 
   gdriveIsValid(): boolean {
@@ -106,7 +120,6 @@ export class MetaInfoCard extends React.Component<
     {
       return (
         <Card
-          bordered={false}
           size="small"
           title={
             <>

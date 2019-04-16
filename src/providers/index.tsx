@@ -8,8 +8,9 @@ import {
 import Axios, { AxiosInstance } from "axios";
 import { message } from "antd";
 import { ModelOperations } from "../api/ModelOperations";
-import { notifyError } from "../commons/notify";
+import { notifyError, notifyOk } from "../commons/notify";
 import { deferred } from "../util";
+import { history } from "../commons/history";
 
 export const GlobalState = (React.createContext(
   {}
@@ -43,28 +44,6 @@ const objToReadable = (o: { [key: string]: any }) => {
   return segs.join("\n");
 };
 
-const createAuthenticatedAxios = (token: string) => {
-  const axios = Axios.create({
-    baseURL: API_BASE,
-    headers: { Authorization: "Token " + token }
-  });
-
-  axios.interceptors.response.use(undefined, error => {
-    console.error(error);
-    if (error.response) {
-      notifyError(`${error.response.status} ERROR:
-${objToReadable(error.response.data)}`);
-      // message.error("An unknown error has occurred.");
-    } else if (error.request) {
-      notifyError(`Request error: ${error.request}`);
-    } else {
-      notifyError(`Error: ${error.message}`);
-    }
-  });
-
-  return axios;
-};
-
 export class GlobalStateWrapper extends React.Component<{}, IGlobalState> {
   constructor(props: any) {
     super(props);
@@ -75,6 +54,42 @@ export class GlobalStateWrapper extends React.Component<{}, IGlobalState> {
       refreshStateFromLocalStorage: this.refreshStateFromLocalStorage
     };
   }
+
+  componentDidMount() {
+    this.refreshStateFromLocalStorage();
+  }
+
+  createAuthenticatedAxios = (token: string) => {
+    const axios = Axios.create({
+      baseURL: API_BASE,
+      headers: { Authorization: "Token " + token }
+    });
+
+    axios.interceptors.response.use(undefined, error => {
+      console.error(error);
+      if (error.response) {
+        if (error.response.status == 403 && this.state.user) {
+          // If we get a 403, and the user is set, the token might have become invalid
+          this.logoutUser().then(() => {
+            history.push("/");
+            notifyError(`You have been signed out. Please log in again.`);
+          });
+        } else {
+          notifyError(
+            `${error.response.status} ERROR: ${objToReadable(
+              error.response.data
+            )}`
+          );
+        }
+      } else if (error.request) {
+        notifyError(`Request error: ${error.request}`);
+      } else {
+        notifyError(`Error: ${error.message}`);
+      }
+    });
+
+    return axios;
+  };
 
   setPackageSet = async (slug: string) => {
     if (!this.state.packageSets) {
@@ -95,9 +110,9 @@ export class GlobalStateWrapper extends React.Component<{}, IGlobalState> {
   };
 
   syncPackageSets = async () => {
-    const axios = this.state.authenticatedAxios;
-    if (axios) {
-      const results = await axios.get<IPackageSetResponse>("/package-sets/");
+    const ops = this.state.modelOps;
+    if (ops) {
+      const results = await ops.getPackageSets();
       console.log("Found packagesets: ", results.data.results);
       const newPackageSet = this.state.selectedPackageSet
         ? results.data.results.find(
@@ -125,7 +140,7 @@ export class GlobalStateWrapper extends React.Component<{}, IGlobalState> {
       ...(this.state.user || {}),
       ...info
     };
-    const axios = createAuthenticatedAxios(newUser.token!);
+    const axios = this.createAuthenticatedAxios(newUser.token!);
     localStorage.setItem(OAUTH_LOCAL_STORAGE_KEY, JSON.stringify(newUser));
     const p = deferred();
     this.setState(
@@ -141,9 +156,21 @@ export class GlobalStateWrapper extends React.Component<{}, IGlobalState> {
     return p.promise;
   };
 
-  componentDidMount() {
-    this.refreshStateFromLocalStorage();
-  }
+  logoutUser = async () => {
+    localStorage.removeItem(OAUTH_LOCAL_STORAGE_KEY);
+    const p = deferred();
+    this.setState(
+      {
+        user: undefined,
+        authenticatedAxios: undefined,
+        packageSets: undefined,
+        selectedPackageSet: undefined,
+        modelOps: undefined
+      },
+      () => p.resolve()
+    );
+    return p.promise;
+  };
 
   refreshStateFromLocalStorage: () => Promise<void> = async () => {
     const loginJSON = localStorage.getItem(OAUTH_LOCAL_STORAGE_KEY);
@@ -151,7 +178,7 @@ export class GlobalStateWrapper extends React.Component<{}, IGlobalState> {
       try {
         const loginData = JSON.parse(loginJSON) as IUser;
         console.log("User data LOADED:", loginData);
-        const axios = createAuthenticatedAxios(loginData.token!);
+        const axios = this.createAuthenticatedAxios(loginData.token!);
         this.setState(
           {
             user: loginData,

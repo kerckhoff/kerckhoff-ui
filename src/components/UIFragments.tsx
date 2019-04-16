@@ -9,6 +9,12 @@ export const SubHeader = styled.h5`
 export const ScrollyRow = styled.div`
   display: flex;
   flex-direction: row;
+  overflow-x: scroll;
+`;
+
+export const ScrollyBox = styled.div`
+  display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
 `;
 

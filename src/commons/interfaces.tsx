@@ -50,4 +50,11 @@ export interface ICachedPackageItem {
   mimeType: string;
   title: string;
   thumbnail_link: string;
+  content_plain: ICachedPackageItemTextContent;
+}
+
+export interface ICachedPackageItemTextContent {
+  data: any;
+  html: string;
+  raw: string;
 }

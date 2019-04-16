@@ -1,4 +1,4 @@
-import { Col, Row } from "antd";
+import { Col, Row, Divider, Button, Icon, Table } from "antd";
 import React from "react";
 import { RouteProps, RouteChildrenProps } from "react-router";
 import { IPackage } from "../commons/interfaces";
@@ -6,8 +6,14 @@ import { GlobalState, IGlobalState } from "../providers";
 import { MetaInfoCard } from "../components/PSMetaInfoCard";
 import styled from "styled-components";
 import { PackageCard } from "../components/PackageCard";
-import { ScrollyRow, ScrollyItem, SubHeader } from "../components/UIFragments";
+import {
+  ScrollyBox,
+  ScrollyItem,
+  SubHeader,
+  ScrollyRow
+} from "../components/UIFragments";
 import { Link } from "react-router-dom";
+import Column from "antd/lib/table/Column";
 
 export class Homepage extends React.Component<RouteChildrenProps> {
   render() {
@@ -98,7 +104,14 @@ export class HomepageInternal extends React.Component<
     }
   };
 
-  refreshFromGdrive = () => {};
+  fetchPackages = async () => {
+    const ops = this.props.context.modelOps;
+    const ps = this.props.context.selectedPackageSet;
+    if (ops && ps) {
+      await ops.fetchPackagesForPackageSet(ps);
+      this.syncPackages();
+    }
+  };
 
   render() {
     return (
@@ -108,18 +121,53 @@ export class HomepageInternal extends React.Component<
             <Col span={6}>
               <SubHeader>PACKAGESET INFO</SubHeader>
               <h3>{this.props.context.selectedPackageSet!.slug}</h3>
+
+              <Divider />
+
+              <Button
+                onClick={this.fetchPackages}
+                style={{ maxWidth: "200px" }}
+                block
+              >
+                <Icon type="reload" />
+                Fetch New Packages
+              </Button>
+
+              <Divider />
               <MetaInfoCard
                 context={this.props.context}
                 ps={this.props.context.selectedPackageSet}
               />
             </Col>
             <Col span={18}>
-              <h2>Recently Updated</h2>
-              {this.renderPackageCards()}
+              {this.state.displayedPackages.length > 0 ? (
+                <>
+                  <h2>Recently Updated</h2>
+                  {this.renderPackageCards()}
+
+                  <Divider />
+
+                  <h2>My Packages</h2>
+                  {this.renderPackageCards()}
+
+                  <Divider />
+                  <h2>All Packages</h2>
+                  <p>TODO</p>
+                  {/* <Table dataSource={this.state.displayedPackages}>
+                    <Column />
+                  </Table> */}
+                </>
+              ) : (
+                <h2>No Packages are found.</h2>
+              )}
             </Col>
           </Row>
         ) : (
-          <h2>Log In First!</h2>
+          <h2>
+            {this.props.context.authenticatedAxios
+              ? "No Package Sets found!"
+              : "Log In First!"}
+          </h2>
         )}
       </>
     );

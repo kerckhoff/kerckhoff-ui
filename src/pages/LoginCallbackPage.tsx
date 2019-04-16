@@ -47,19 +47,31 @@ export class LoginCallbackPageInternal extends React.Component<
       const userInfoRes = await axios.get(OAUTH_URL, {
         params: query
       });
-      const userRepr = userInfoRes.data as IUserRepr;
-      console.log(this.props.context);
-      await this.props.context.updateUser({
-        id: userRepr.user.id,
-        username: userRepr.user.username,
-        firstName: userRepr.user.first_name,
-        lastName: userRepr.user.last_name,
-        token: userRepr.token
-      });
-      await this.props.context.refreshStateFromLocalStorage();
-      history.push("/");
+
+      const redirectURL = userInfoRes.data.redirect_url;
+
+      if (redirectURL) {
+        // We need a second log in because of missing credentials
+        window.open(redirectURL, "_self");
+      } else {
+        const userRepr = userInfoRes.data as IUserRepr;
+
+        await this.props.context.updateUser({
+          id: userRepr.user.id,
+          username: userRepr.user.username,
+          firstName: userRepr.user.first_name,
+          lastName: userRepr.user.last_name,
+          token: userRepr.token
+        });
+        await this.props.context.refreshStateFromLocalStorage();
+        history.push("/");
+      }
     } catch (e) {
       console.error(e);
+      // Reattempt login
+      const resJSON = (await axios.get(OAUTH_URL)).data;
+      let redirectURL = resJSON["redirect_url"] as string;
+      window.open(redirectURL, "_self");
     }
   }
   render() {
