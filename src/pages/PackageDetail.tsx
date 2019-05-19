@@ -13,7 +13,11 @@ import {
   Tabs
 } from "antd";
 import { SubHeader, ScrollyBox, ScrollyItem } from "../components/UIFragments";
-import { IPackage, ICachedPackageItem } from "../commons/interfaces";
+import {
+  IPackage,
+  ICachedPackageItem,
+  IPackageVersion
+} from "../commons/interfaces";
 import styled from "styled-components";
 import _ from "lodash";
 import {
@@ -24,7 +28,7 @@ import {
 import CollapsePanel from "antd/lib/collapse/CollapsePanel";
 import { Link } from "react-router-dom";
 import ReactJson from "react-json-view";
-import { DUMMY_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_VersionTimeline } from "../components/VersionTimeline";
+import { VersionTimeline } from "../components/VersionTimeline";
 
 const TreeNode = Tree.TreeNode;
 
@@ -74,6 +78,11 @@ const TextInfoBox = ({ pi }: { pi: ICachedPackageItem }) => {
     <Col span={24} style={{ marginBottom: "1em" }}>
       <Col span={8}>Last modified by:</Col>
       <Col span={16}>{pi.last_modified_by}</Col>
+      <Col style={{ paddingTop: "10px" }} span={24}>
+        <a href={pi.altLink} target="_blank">
+          <SmallText>Edit in Google Drive</SmallText>
+        </a>
+      </Col>
     </Col>
   );
 };
@@ -88,13 +97,17 @@ export class PackageDetailPageInternal extends React.Component<
   {
     package?: IPackage;
     is404: Boolean;
+    versions: IPackageVersion[];
+    selectedVersion: number;
   }
 > {
   constructor(props: any) {
     super(props);
     this.state = {
       package: undefined,
-      is404: false
+      is404: false,
+      versions: [],
+      selectedVersion: -1
     };
   }
 
@@ -120,6 +133,16 @@ export class PackageDetailPageInternal extends React.Component<
       if (packageResponse) {
         console.log("Got package:", packageResponse.data);
         this.setState({ package: packageResponse.data });
+
+        const packageVersions = await ops.getPackageVersions(
+          currentPs!,
+          currentSlug
+        );
+        console.log("Got package versions:", packageVersions);
+
+        if (packageVersions) {
+          this.setState({ versions: packageVersions.data.results });
+        }
       } else {
         this.setState({ is404: true });
       }
@@ -239,7 +262,11 @@ export class PackageDetailPageInternal extends React.Component<
 
                 <SubHeader>VERSIONS</SubHeader>
 
-                <DUMMY_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_VersionTimeline />
+                <VersionTimeline
+                  committedVersions={this.state.versions}
+                  selectedVersionNumber={this.state.selectedVersion}
+                  onSelect={() => {}}
+                />
               </Col>
               <Col span={18}>
                 {cachedProperties &&

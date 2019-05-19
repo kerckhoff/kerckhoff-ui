@@ -1,17 +1,10 @@
 import React from "react";
 import { Timeline, Icon, Tooltip } from "antd";
 import styled from "styled-components";
-
-interface IVersion {
-  id: string;
-  versionNumber: number;
-  title: string;
-  description: string;
-  date: Date;
-}
+import { IPackageVersion } from "../commons/interfaces";
 
 interface IVersionTimelineProps {
-  committedVersions: IVersion[]; // assuming sorted from latest to oldest
+  committedVersions: IPackageVersion[]; // assuming sorted from latest to oldest
   selectedVersionNumber: number; // -1 for staged version
   onSelect: (version: number) => void;
 }
@@ -56,22 +49,19 @@ export class VersionTimeline extends React.Component<IVersionTimelineProps> {
     );
   }
 
-  renderItem(version: IVersion) {
-    const isSelected =
-      this.props.selectedVersionNumber === version.versionNumber;
+  renderItem(version: IPackageVersion) {
+    const isSelected = this.props.selectedVersionNumber === version.id_num;
     const itemDecorations = {
       color: isSelected ? "green" : "blue"
     };
     const SpanUsed = isSelected ? SelectedClickableSpan : ClickableSpan;
     return (
-      <Timeline.Item key={version.versionNumber} {...itemDecorations}>
+      <Timeline.Item key={version.id_num} {...itemDecorations}>
         {VersionTimeline.wrapTooltip(
-          <SpanUsed
-            onClick={this.props.onSelect.bind(this, version.versionNumber)}
-          >
-            {version.title}
+          <SpanUsed onClick={this.props.onSelect.bind(this, version.id_num)}>
+            {version.id_num} - {version.title}
           </SpanUsed>,
-          version.description
+          version.version_description
         )}
       </Timeline.Item>
     );
@@ -89,7 +79,7 @@ export class VersionTimeline extends React.Component<IVersionTimelineProps> {
     );
   }
 }
-
+/*
 export class DUMMY_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_VersionTimeline extends React.Component<
   {},
   { selected: number }
@@ -119,3 +109,4 @@ export class DUMMY_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_VersionTimeline extends React
     );
   }
 }
+*/

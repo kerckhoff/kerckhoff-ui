@@ -4,7 +4,8 @@ import {
   IPackageSetInit,
   IPackageResponse,
   IPackage,
-  IPackageSetResponse
+  IPackageSetResponse,
+  IPackageVersionResponse
 } from "../commons/interfaces";
 
 type PackageOrderingField =
@@ -44,6 +45,12 @@ export class ModelOperations {
   async getPackageDetails(ps: IPackageSet, packageSlug: string) {
     return this.axios.get<IPackage>(
       `/package-sets/${ps.slug}/packages/${packageSlug}/`
+    );
+  }
+
+  async getPackageVersions(ps: IPackageSet, packageSlug: string) {
+    return this.axios.get<IPackageVersionResponse>(
+      `/package-sets/${ps.slug}/packages/${packageSlug}/versions/`
     );
   }
 

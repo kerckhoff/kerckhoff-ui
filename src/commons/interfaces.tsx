@@ -28,6 +28,10 @@ export interface IPackageResponse {
   results: IPackage[];
 }
 
+export interface IPackageVersionResponse {
+  results: IPackageVersion[];
+}
+
 export interface IPackage {
   id: string;
   slug: string;
@@ -42,6 +46,14 @@ export interface IPackageMeta {
     folder_id: string;
     folder_url: string;
   };
+}
+
+export interface IPackageVersion {
+  id: string;
+  id_num: number;
+  title: string;
+  version_description: string;
+  created_at: string;
 }
 
 export interface ICachedPackageItem {
