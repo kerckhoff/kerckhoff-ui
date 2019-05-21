@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@types/lodash": "^4.14.121",
+    "@types/marked": "^0.6.5",
     "@types/qs": "^6.5.1",
     "antd": "^3.13.0",
     "axios": "^0.18.0",
@@ -11,14 +12,18 @@
     "dayjs": "^1.8.8",
     "history": "^4.7.2",
     "lodash": "^4.17.11",
+    "marked": "^0.6.2",
     "mobx": "^5.9.0",
     "mobx-react": "^5.4.3",
     "qs": "^6.6.0",
     "react": "^16.8.1",
+    "react-diff-viewer": "^1.0.5",
     "react-dom": "^16.7.0",
+    "react-html-parser": "^2.0.2",
     "react-json-view": "^1.19.1",
     "react-router-dom": "^4.3.1",
     "react-scripts": "2.1.3",
+    "react-visual-diff": "^0.4.3",
     "styled-components": "^4.1.3"
   },
   "devDependencies": {

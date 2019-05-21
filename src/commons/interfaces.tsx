@@ -59,14 +59,17 @@ export interface IPackageVersion {
 export interface ICachedPackageItem {
   altLink: string;
   last_modified_by: string;
+  format?: string;
   mimeType: string;
   title: string;
   thumbnail_link: string;
   content_plain: ICachedPackageItemTextContent;
 }
 
+export type JSONText = any;
+
 export interface ICachedPackageItemTextContent {
-  data: any;
+  data: JSONText;
   html: string;
   raw: string;
 }
