@@ -28,7 +28,10 @@ export interface IGlobalState {
   refreshStateFromLocalStorage: () => Promise<void>;
 }
 
-const objToReadable = (o: { [key: string]: any }) => {
+const objToReadable = (o: { [key: string]: any } | string) => {
+  if (typeof o === "string") {
+    return o.length > 256 ? o.substr(0, 256) + "..." : o;
+  }
   const segs: string[] = [];
   for (const k in o) {
     segs.push(
