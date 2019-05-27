@@ -14,7 +14,6 @@ import {
 } from "../components/UIFragments";
 import { Link } from "react-router-dom";
 import Column from "antd/lib/table/Column";
-import { DUMMY_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_DiffModal } from "../components/DiffModal";
 
 export class Homepage extends React.Component<RouteChildrenProps> {
   render() {
@@ -170,7 +169,7 @@ export class HomepageInternal extends React.Component<
               : "Log In First!"}
           </h2>
         )}
-        <DUMMY_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_DiffModal />
+        {/* <DUMMY_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_DiffModal /> */}
       </>
     );
   }

@@ -21,3 +21,9 @@ export const ScrollyBox = styled.div`
 export const ScrollyItem = styled.div`
   padding: 8px;
 `;
+
+export const SmallText = styled.p`
+  font-size: 0.8em;
+  font-style: italic;
+  margin-bottom: 0.4em;
+`;

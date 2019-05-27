@@ -1,22 +1,13 @@
 import React from "react";
-import { RouteChildrenProps } from "react-router";
+import { RouteChildrenProps, Route } from "react-router";
 import { GlobalState, IGlobalState } from "../providers";
-import {
-  Row,
-  Col,
-  Button,
-  Icon,
-  Divider,
-  Tree,
-  Card,
-  Collapse,
-  Tabs
-} from "antd";
-import { SubHeader, ScrollyBox, ScrollyItem } from "../components/UIFragments";
+import { Row, Col, Button, Icon, Divider, Tree, Spin } from "antd";
+import { SubHeader, SmallText } from "../components/UIFragments";
 import {
   IPackage,
   ICachedPackageItem,
-  IPackageVersion
+  IPackageVersion,
+  IPackageVersionWithVersionData
 } from "../commons/interfaces";
 import styled from "styled-components";
 import _ from "lodash";
@@ -25,14 +16,12 @@ import {
   mimeTypeToType,
   PackageSetItemType
 } from "../commons/utils";
-import CollapsePanel from "antd/lib/collapse/CollapsePanel";
 import { Link } from "react-router-dom";
-import ReactJson from "react-json-view";
 import { VersionTimeline } from "../components/VersionTimeline";
+import { PackagePreviewDisplay } from "../components/PackagePreviewDisplay";
+import { DiffModal } from "../components/DiffModal";
 
 const TreeNode = Tree.TreeNode;
-
-const TabPane = Tabs.TabPane;
 
 export class PackageDetailPage extends React.Component<RouteChildrenProps> {
   render() {
@@ -53,61 +42,28 @@ const SlashSpan = styled.span`
   color: #999;
 `;
 
-const SmallText = styled.p`
-  font-size: 0.8em;
-  font-style: italic;
-  margin-bottom: 0.4em;
-`;
-
-const ContainedImage = styled.img`
-  object-fit: contain;
-  max-height: 180px;
-`;
-
-const ImageTitle = styled.span`
-  font-size: 0.9em;
-  text-overflow: ellipsis;
-`;
-
-const CollapseTitle = styled.h2`
-  margin-bottom: 0;
-`;
-
-const TextInfoBox = ({ pi }: { pi: ICachedPackageItem }) => {
-  return (
-    <Col span={24} style={{ marginBottom: "1em" }}>
-      <Col span={8}>Last modified by:</Col>
-      <Col span={16}>{pi.last_modified_by}</Col>
-      <Col style={{ paddingTop: "10px" }} span={24}>
-        <a href={pi.altLink} target="_blank">
-          <SmallText>Edit in Google Drive</SmallText>
-        </a>
-      </Col>
-    </Col>
-  );
-};
-
-const TextContent = styled.div`
-  max-height: 500px;
-  overflow-y: scroll;
-`;
-
 export class PackageDetailPageInternal extends React.Component<
   RouteChildrenProps & { context: IGlobalState },
   {
     package?: IPackage;
     is404: Boolean;
     versions: IPackageVersion[];
+    latestVersion?: IPackageVersionWithVersionData;
+    isFetchingPreview: boolean;
     selectedVersion: number;
+    showCreateVersionModal: boolean;
   }
 > {
   constructor(props: any) {
     super(props);
     this.state = {
       package: undefined,
+      latestVersion: undefined,
       is404: false,
       versions: [],
-      selectedVersion: -1
+      isFetchingPreview: false,
+      selectedVersion: -1,
+      showCreateVersionModal: false
     };
   }
 
@@ -166,8 +122,42 @@ export class PackageDetailPageInternal extends React.Component<
     }
   }
 
+  toggleCreateVersionModal = async () => {
+    if (this.state.showCreateVersionModal == true) {
+      this.setState({
+        showCreateVersionModal: false
+      });
+    } else {
+      const ops = this.props.context.modelOps!;
+
+      const packageVersion = await ops.getPackageDetailsWithVersion(
+        this.props.context.selectedPackageSet!,
+        this.state.package!.slug,
+        this.state.versions.length
+      );
+
+      console.log(
+        "Opening modal, latest version",
+        packageVersion.data.version_data
+      );
+      this.setState(
+        {
+          latestVersion: packageVersion.data.version_data
+        },
+        () => {
+          this.setState({
+            showCreateVersionModal: !this.state.showCreateVersionModal
+          });
+        }
+      );
+    }
+  };
+
   handlePreviewUpdate = async () => {
     const ops = this.props.context.modelOps!;
+    this.setState({
+      isFetchingPreview: true
+    });
 
     const results = await ops.updatePackageCache(
       this.props.context.selectedPackageSet!,
@@ -175,7 +165,33 @@ export class PackageDetailPageInternal extends React.Component<
     );
 
     console.log("Refreshed package from cache:", results.data);
-    this.setState({ package: results.data });
+    this.setState({ package: results.data, isFetchingPreview: false });
+  };
+
+  handleVersionCreation = async (
+    title: string,
+    description: string,
+    files: string[]
+  ) => {
+    const ops = this.props.context.modelOps!;
+    await ops.createPackageVersion(
+      this.props.context.selectedPackageSet!,
+      this.state.package!,
+      {
+        title: title,
+        version_description: description,
+        included_items: files
+      }
+    );
+  };
+
+  handleSubmit = async () => {
+    this.setState({
+      package: undefined,
+      latestVersion: undefined,
+      versions: []
+    });
+    await this.getPackageDetails();
   };
 
   sortedCachedProperties = () => {
@@ -226,6 +242,20 @@ export class PackageDetailPageInternal extends React.Component<
         <Row gutter={32}>
           {this.state.package ? (
             <>
+              <DiffModal
+                key={
+                  this.state.package.id +
+                  (this.state.latestVersion
+                    ? this.state.latestVersion.id
+                    : this.state.versions.length)
+                }
+                handleSubmit={this.handleVersionCreation}
+                onSubmit={this.handleSubmit}
+                isOpen={this.state.showCreateVersionModal}
+                setOpen={this.toggleCreateVersionModal}
+                cachedPackage={this.state.package}
+                latestCommittedVersion={this.state.latestVersion}
+              />
               <Col span={6}>
                 <SubHeader>PACKAGE INFO</SubHeader>
                 <h3>
@@ -237,16 +267,41 @@ export class PackageDetailPageInternal extends React.Component<
                 </h3>
                 <Divider />
                 <Button
-                  onClick={this.handlePreviewUpdate}
-                  style={{ marginBottom: "1em", maxWidth: "160px" }}
+                  style={{
+                    marginBottom: "1em",
+                    maxWidth: "200px",
+                    display: "block"
+                  }}
+                  type="primary"
                   block
+                  onClick={this.toggleCreateVersionModal}
                 >
-                  <Icon type="reload" />
-                  Update Preview
+                  <Icon type="file-add" />
+                  Create Version
                 </Button>
+                <Button.Group
+                  style={{
+                    marginBottom: "1em"
+                  }}
+                >
+                  <Button
+                    href={this.state.package.metadata.google_drive!.folder_url}
+                    target="_blank"
+                  >
+                    <Icon type="folder-open" />
+                  </Button>
+                  <Button
+                    onClick={this.handlePreviewUpdate}
+                    disabled={this.state.isFetchingPreview}
+                  >
+                    <Icon type="reload" />
+                    Update Preview
+                  </Button>
+                </Button.Group>
+
                 <SmallText>
                   {lastFetchedDate
-                    ? `Last updated ${lastFetchedDate.fromNow()}`
+                    ? `Preview last updated ${lastFetchedDate.fromNow()}`
                     : "The Package has never been synced before!"}
                 </SmallText>
                 <SmallText>
@@ -265,88 +320,37 @@ export class PackageDetailPageInternal extends React.Component<
                 <VersionTimeline
                   committedVersions={this.state.versions}
                   selectedVersionNumber={this.state.selectedVersion}
-                  onSelect={() => {}}
+                  onSelect={async (versionNumber: number) => {
+                    const ops = this.props.context.modelOps!;
+                    const res = await ops.getPackageDetailsWithVersion(
+                      this.props.context.selectedPackageSet!,
+                      this.state.package!.slug,
+                      versionNumber
+                    );
+                    console.log(`Version ${versionNumber}`, res.data);
+                  }}
                 />
               </Col>
               <Col span={18}>
-                {cachedProperties &&
-                (cachedProperties.image || cachedProperties.text) ? (
-                  <Collapse
-                    bordered={false}
-                    defaultActiveKey={["text", "images"]}
-                  >
-                    {cachedProperties.text && (
-                      <CollapsePanel
-                        header={<CollapseTitle>Text/Data</CollapseTitle>}
-                        key="text"
-                      >
-                        <Tabs defaultActiveKey="1" tabPosition="left">
-                          {cachedProperties.text.map((pi, i) => {
-                            return (
-                              <TabPane tab={pi.title} key={`${i + 1}`}>
-                                <TextInfoBox pi={pi} />
-                                <Divider />
-                                <ReactJson
-                                  style={{ marginBottom: "1em" }}
-                                  src={pi.content_plain.data}
-                                  name={"data"}
-                                  collapsed={true}
-                                  enableClipboard={false}
-                                />
-                                <TextContent
-                                  dangerouslySetInnerHTML={{
-                                    __html: pi.content_plain.html
-                                  }}
-                                />
-                              </TabPane>
-                            );
-                          })}
-                        </Tabs>
-                      </CollapsePanel>
-                    )}
-
-                    {cachedProperties.image && (
-                      <CollapsePanel
-                        header={<CollapseTitle>Images</CollapseTitle>}
-                        key="images"
-                      >
-                        <ScrollyBox>
-                          {cachedProperties.image!.map(p => {
-                            return (
-                              <ScrollyItem key={p.title}>
-                                <a href={p.altLink} target="_blank">
-                                  <Card
-                                    hoverable
-                                    size="small"
-                                    style={{ width: "240px" }}
-                                    cover={
-                                      <ContainedImage src={p.thumbnail_link} />
-                                    }
-                                  >
-                                    <Card.Meta
-                                      title={<ImageTitle>{p.title}</ImageTitle>}
-                                      description={
-                                        <SmallText>
-                                          Last modified by {p.last_modified_by}
-                                        </SmallText>
-                                      }
-                                    />
-                                  </Card>
-                                </a>
-                              </ScrollyItem>
-                            );
-                          })}
-                        </ScrollyBox>
-                      </CollapsePanel>
-                    )}
-                  </Collapse>
-                ) : (
-                  <h2>The package has never been synced before!</h2>
-                )}
+                <Route
+                  exact
+                  path={`${this.props.match!.url}/`}
+                  render={() => {
+                    return (
+                      <Spin spinning={this.state.isFetchingPreview}>
+                        <PackagePreviewDisplay
+                          cachedProperties={cachedProperties}
+                        />
+                      </Spin>
+                    );
+                  }}
+                />
               </Col>
             </>
           ) : (
-            <h2>Loading...</h2>
+            <Col style={{ textAlign: "center", paddingTop: "100px" }}>
+              <Spin size="large" />
+            </Col>
           )}
         </Row>
       </>

@@ -24,6 +24,18 @@ const CappedMaxHeightDiv = styled.div`
   overflow: scroll;
 `;
 
+const VersionLabel = styled.span`
+  font-weight: bold;
+  font-size: 0.8em;
+`;
+
+const VersionCreatorLabel = styled.span`
+  font-style: italic;
+  color: #999;
+  font-size: 0.8em;
+  padding-left: 1em;
+`;
+
 export class VersionTimeline extends React.Component<IVersionTimelineProps> {
   static wrapTooltip(item: JSX.Element, desc: string) {
     return (
@@ -59,7 +71,10 @@ export class VersionTimeline extends React.Component<IVersionTimelineProps> {
       <Timeline.Item key={version.id_num} {...itemDecorations}>
         {VersionTimeline.wrapTooltip(
           <SpanUsed onClick={this.props.onSelect.bind(this, version.id_num)}>
-            {version.id_num} - {version.title}
+            <VersionLabel>v{version.id_num}</VersionLabel> {version.title}
+            <VersionCreatorLabel>
+              {version.created_by.username}
+            </VersionCreatorLabel>
           </SpanUsed>,
           version.version_description
         )}

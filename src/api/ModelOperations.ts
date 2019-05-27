@@ -5,7 +5,10 @@ import {
   IPackageResponse,
   IPackage,
   IPackageSetResponse,
-  IPackageVersionResponse
+  IPackageVersionResponse,
+  IPackageVersionWithVersionData,
+  IPackageWithVersion,
+  ICreateVersionPayload
 } from "../commons/interfaces";
 
 type PackageOrderingField =
@@ -48,6 +51,16 @@ export class ModelOperations {
     );
   }
 
+  async getPackageDetailsWithVersion(
+    ps: IPackageSet,
+    packageSlug: string,
+    version: number
+  ) {
+    return this.axios.get<IPackageWithVersion>(
+      `/package-sets/${ps.slug}/packages/${packageSlug}/?version=${version}`
+    );
+  }
+
   async getPackageVersions(ps: IPackageSet, packageSlug: string) {
     return this.axios.get<IPackageVersionResponse>(
       `/package-sets/${ps.slug}/packages/${packageSlug}/versions/`
@@ -57,6 +70,17 @@ export class ModelOperations {
   async updatePackageCache(ps: IPackageSet, p: IPackage) {
     return this.axios.post<IPackage>(
       `/package-sets/${ps.slug}/packages/${p.slug}/preview/`
+    );
+  }
+
+  async createPackageVersion(
+    ps: IPackageSet,
+    p: IPackage,
+    payload: ICreateVersionPayload
+  ) {
+    return this.axios.post<IPackage>(
+      `/package-sets/${ps.slug}/packages/${p.slug}/snapshot/`,
+      payload
     );
   }
 

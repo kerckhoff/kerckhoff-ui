@@ -1,24 +1,33 @@
-import React, { Component } from 'react'
+import React, { Component, ChangeEvent } from "react";
 import ReactDiffViewer from "react-diff-viewer";
-import { IPackage, ICachedPackageItem } from "../commons/interfaces";
-import { Tree, Modal } from 'antd';
+import {
+  IPackage,
+  ICachedPackageItem,
+  IPackageVersionWithVersionData,
+  IPackageItemData
+} from "../commons/interfaces";
+import { Tree, Modal, Input } from "antd";
 const { TreeNode } = Tree;
-
-interface TEMP_IPackageVersion {
-  items: ICachedPackageItem[];
-}
 
 interface IDiffModalProps {
   cachedPackage: IPackage;
-  lastestCommittedVersion: TEMP_IPackageVersion;
+  latestCommittedVersion?: IPackageVersionWithVersionData;
+  isOpen: boolean;
+  setOpen: (cond: boolean) => void;
+  handleSubmit: (
+    title: string,
+    description: string,
+    selectedFiles: string[]
+  ) => Promise<void>;
+  onSubmit: () => void;
 }
 
 /**
  * Basic design:
- * 
+ *
  * We will attempt to group the items based on their types under preview.
  * If a file is gone in preview, it would be grouped under their type in commited version.
- * 
+ *
  * If a file is added, we only display the added.
  * If a file is deleted, we display nothing.
  * If a file has changed type (same name), we only display the new version.
@@ -26,13 +35,16 @@ interface IDiffModalProps {
 
 interface IDiffModalState {
   treeView: IDiffTreeView;
-  oldMap: Map<string, ICachedPackageItem>;
+  oldMap: Map<string, IPackageItemData>;
   newMap: Map<string, ICachedPackageItem>;
   treeViewItemMap: Map<string, IDiffTreeViewItem>;
   diffedItemTitle: string;
   checkedCategoryTitles: string[]; // category titles for display only, DO NOT TOUCH
   checkedItemTitles: string[];
   notChangedTitles: string[]; // checkedItemTitles + notChangedTitles = items to be included in the new package
+  packageVersionTitle: string;
+  packageVersionDescription: string;
+  isSubmitting: boolean;
 }
 
 interface IDiffTreeView {
@@ -46,7 +58,7 @@ enum DiffItemState {
   DEFAULT, // The file content changed.
   NEW, // The file is new.
   DELETED, // The file is removed in cached version.
-  TYPECHANGED, // The type of the file is changed.
+  TYPECHANGED // The type of the file is changed.
 }
 
 interface IDiffTreeViewItem {
@@ -72,52 +84,71 @@ const TextDiff: React.FunctionComponent<IDiffSource> = (props: IDiffSource) => {
       splitView={true}
     />
   );
-}
+};
 
-const ImageDiff: React.FunctionComponent<IDiffSource> = (props: IDiffSource) => {
+const ImageDiff: React.FunctionComponent<IDiffSource> = (
+  props: IDiffSource
+) => {
   return (
-    <div style={{
-      display: "flex",
-      height: "100%",
-      flexDirection: "column",
-      justifyContent: "center",
-    }}>
-      <div style={{
+    <div
+      style={{
         display: "flex",
-        justifyContent: "space-around",
-      }}>
-        <img style={{
-          maxWidth: "45%",
-          objectFit: "cover",
-        }} src={props.old} />
-        <div style={{
+        height: "100%",
+        flexDirection: "column",
+        justifyContent: "center"
+      }}
+    >
+      <div
+        style={{
           display: "flex",
-          height: "100%",
-          flexDirection: "column",
-          justifyContent: "center",
-          fontSize: "3rem",
-        }}> → </div>
-        <img style={{
-          maxWidth: "45%",
-          objectFit: "cover",
-        }} src={props.new} />
+          justifyContent: "space-around"
+        }}
+      >
+        <img
+          style={{
+            maxWidth: "45%",
+            objectFit: "cover"
+          }}
+          src={props.old}
+        />
+        <div
+          style={{
+            display: "flex",
+            height: "100%",
+            flexDirection: "column",
+            justifyContent: "center",
+            fontSize: "3rem"
+          }}
+        >
+          {" "}
+          →{" "}
+        </div>
+        <img
+          style={{
+            maxWidth: "45%",
+            objectFit: "cover"
+          }}
+          src={props.new}
+        />
       </div>
     </div>
   );
-}
+};
 
 enum DataType {
   IMAGE,
   AML,
   MD,
-  OTHER,
+  OTHER
 }
 
-function getDataType(item: ICachedPackageItem): DataType {
+function getDataType(item: ICachedPackageItem | IPackageItemData): DataType {
   if (item.format) {
     switch (item.format) {
-      case "MD": return DataType.MD;
-      case "AML": return DataType.AML
+      case "MD":
+        return DataType.MD;
+      case "AML":
+        return DataType.AML;
       // no default
     }
   }
@@ -132,39 +163,50 @@ function getDataType(item: ICachedPackageItem): DataType {
   // TODO: maybe add extension mapping?
 }
 
+const diffModalinitialState: IDiffModalState = {
+  treeView: {
+    images: [] as IDiffTreeViewItem[],
+    amls: [] as IDiffTreeViewItem[],
+    markdowns: [] as IDiffTreeViewItem[],
+    others: [] as IDiffTreeViewItem[]
+  },
+  oldMap: new Map<string, IPackageItemData>(),
+  newMap: new Map<string, ICachedPackageItem>(),
+  treeViewItemMap: new Map<string, IDiffTreeViewItem>(),
+  diffedItemTitle: "",
+  checkedCategoryTitles: [],
+  checkedItemTitles: [],
+  notChangedTitles: [],
+  packageVersionTitle: "",
+  packageVersionDescription: "",
+  isSubmitting: false
+};
+
 export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
-  state = {
-    treeView: {
-      images: [] as IDiffTreeViewItem[],
-      amls: [] as IDiffTreeViewItem[],
-      markdowns: [] as IDiffTreeViewItem[],
-      others: [] as IDiffTreeViewItem[],
-    },
-    oldMap: new Map<string, ICachedPackageItem>(),
-    newMap: new Map<string, ICachedPackageItem>(),
-    treeViewItemMap: new Map<string, IDiffTreeViewItem>(),
-    diffedItemTitle: "",
-    checkedCategoryTitles: [],
-    checkedItemTitles: [],
-    notChangedTitles: [],
-  };
+  state = diffModalinitialState;
 
   static populateTreeView(newProps: IDiffModalProps): IDiffModalState {
     /**
      * Display logic:
-     * 
+     *
      * if typed has changed, show in the new type's section with item state set to TYPECHANGED.
      * if file is deleted, show at its original section with item state set to DELETED.
      * if file is new, show at section of its type with item state set to NEW.
      */
     const typeMap = new Map<string, (DataType | null)[]>();
-    const oldMap = new Map<string, ICachedPackageItem>();
+    const oldMap = new Map<string, IPackageItemData>();
     const newMap = new Map<string, ICachedPackageItem>();
     const treeViewItemMap = new Map<string, IDiffTreeViewItem>();
 
-    for (let item of newProps.lastestCommittedVersion.items) {
-      typeMap.set(item.title, [getDataType(item), null]);
-      oldMap.set(item.title, item);
+    if (newProps.latestCommittedVersion) {
+      for (let item of newProps.latestCommittedVersion.packageitem_set) {
+        const packageItemData = item.data;
+        typeMap.set(packageItemData.title, [
+          getDataType(packageItemData),
+          null
+        ]);
+        oldMap.set(packageItemData.title, packageItemData);
+      }
     }
 
     for (let item of newProps.cachedPackage.cached) {
@@ -186,21 +228,27 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
     typeMap.forEach((dataTypes, title) => {
       if (dataTypes.length === 2) {
         const itemState =
-          dataTypes[0] === dataTypes[1] ? DiffItemState.DEFAULT : (
-            dataTypes[0] === null ? DiffItemState.NEW : (
-              dataTypes[1] === null ? DiffItemState.DELETED :
-                DiffItemState.TYPECHANGED
-            )
-          );
-        
-        const newDataType = (dataTypes[1] !== null ? dataTypes[1] : dataTypes[0])!;
+          dataTypes[0] === dataTypes[1]
+            ? DiffItemState.DEFAULT
+            : dataTypes[0] === null
+            ? DiffItemState.NEW
+            : dataTypes[1] === null
+            ? DiffItemState.DELETED
+            : DiffItemState.TYPECHANGED;
+
+        const newDataType = (dataTypes[1] !== null
+          ? dataTypes[1]
+          : dataTypes[0])!;
 
         let listToPush: IDiffTreeViewItem[];
         switch (newDataType) {
           case DataType.IMAGE: {
             // Skip diffing if not changed
-            if (itemState === DiffItemState.DEFAULT
-                && oldMap.get(title)!.thumbnail_link === newMap.get(title)!.thumbnail_link) {
+            if (
+              itemState === DiffItemState.DEFAULT &&
+              oldMap.get(title)!.last_modified_date ===
+                newMap.get(title)!.last_modified_date
+            ) {
               notChangedTitles.push(title);
               return;
             }
@@ -209,8 +257,11 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
           }
           case DataType.AML: {
             // Skip diffing if not changed
-            if (itemState === DiffItemState.DEFAULT
-              && oldMap.get(title)!.content_plain.raw === newMap.get(title)!.content_plain.raw) {
+            if (
+              itemState === DiffItemState.DEFAULT &&
+              oldMap.get(title)!.content_plain.raw ===
+                newMap.get(title)!.content_plain.raw
+            ) {
               notChangedTitles.push(title);
               return;
             }
@@ -219,8 +270,11 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
           }
           case DataType.MD: {
             // Skip diffing if not changed
-            if (itemState === DiffItemState.DEFAULT
-              && oldMap.get(title)!.content_plain.raw === newMap.get(title)!.content_plain.raw) {
+            if (
+              itemState === DiffItemState.DEFAULT &&
+              oldMap.get(title)!.content_plain.raw ===
+                newMap.get(title)!.content_plain.raw
+            ) {
               notChangedTitles.push(title);
               return;
             }
@@ -229,8 +283,11 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
           }
           default: {
             // Skip diffing if not changed
-            if (itemState === DiffItemState.DEFAULT
-              && oldMap.get(title)!.content_plain.raw === newMap.get(title)!.content_plain.raw) {
+            if (
+              itemState === DiffItemState.DEFAULT &&
+              oldMap.get(title)!.content_plain.raw ===
+                newMap.get(title)!.content_plain.raw
+            ) {
               notChangedTitles.push(title);
               return;
             }
@@ -240,7 +297,7 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
 
         const treeViewItem: IDiffTreeViewItem = {
           title,
-          state: itemState,
+          state: itemState
         };
         listToPush.push(treeViewItem);
         treeViewItemMap.set(title, treeViewItem);
@@ -254,7 +311,7 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
         images,
         amls,
         markdowns,
-        others,
+        others
       },
       oldMap,
       newMap,
@@ -263,13 +320,16 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
       checkedCategoryTitles: [],
       checkedItemTitles: [],
       notChangedTitles,
+      packageVersionDescription: "",
+      packageVersionTitle: "",
+      isSubmitting: false
     };
   }
-  
+
   /**
    * getDerivedStateFromProps() is a bit problematic since
    * it would also be invoked on state update...
-   * 
+   *
    * So the laziest way is to ensure this component is REMOVED
    * from page if the user decides to close this Modal, so that
    * it would reload from fresh when the diff between cached and
@@ -280,7 +340,9 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
   }
 
   static DUMMY_CATEGORY_MARKER = "$$DUMMY_CATEGORY_MARKER";
-  static createDummyMarker(count: number) { return `${DiffModal.DUMMY_CATEGORY_MARKER}${count}`; }
+  static createDummyMarker(count: number) {
+    return `${DiffModal.DUMMY_CATEGORY_MARKER}${count}`;
+  }
 
   updateDiffed = (keys: string[], _event: any) => {
     console.log(keys);
@@ -289,19 +351,23 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
       return; // Do nothing, selecting a parent category
     }
     this.setState({
-      diffedItemTitle: keys[0] || "",
+      diffedItemTitle: keys[0] || ""
     });
-  }
+  };
 
-  updateChecked = (checkedKeys: string[] | {
-    checked: string[];
-    halfChecked: string[];
-  }) => {
+  updateChecked = (
+    checkedKeys:
+      | string[]
+      | {
+          checked: string[];
+          halfChecked: string[];
+        }
+  ) => {
     if (!(checkedKeys instanceof Array)) {
       console.error("Should not happen");
       return;
     }
-    
+
     let checkedCategoryTitles = [] as string[];
     let checkedItemTitles = [] as string[];
     for (let key of checkedKeys) {
@@ -314,25 +380,33 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
 
     this.setState({
       checkedCategoryTitles,
-      checkedItemTitles,
+      checkedItemTitles
     });
-  }
+  };
+
+  closeModal = () => {
+    this.props.setOpen(false);
+  };
 
   static _renderDeleted(): JSX.Element {
     return (
-      <div style={{
-        display: "flex",
-        height: "100%",
-        flexDirection: "column",
-        justifyContent: "center",
-      }}>
-        <div style={{
-          textAlign: "center",
-          width: "100%",
-          margin: "auto",
-          fontSize: "3rem",
-          color: "lightgray",
-        }}>
+      <div
+        style={{
+          display: "flex",
+          height: "100%",
+          flexDirection: "column",
+          justifyContent: "center"
+        }}
+      >
+        <div
+          style={{
+            textAlign: "center",
+            width: "100%",
+            margin: "auto",
+            fontSize: "3rem",
+            color: "lightgray"
+          }}
+        >
           FILE DELETED
         </div>
       </div>
@@ -345,22 +419,32 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
         return DiffModal._renderDeleted();
       case DiffItemState.NEW:
       case DiffItemState.TYPECHANGED:
-        const imageURL = this.state.newMap.get(treeViewItem.title)!.thumbnail_link;
-        return <div style={{
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-around",
-        }}>
-          <img style={{
-            width: "80%",
-            margin: "auto",
-          }} src={imageURL} />
-        </div>
+        const imageURL = this.state.newMap.get(treeViewItem.title)!
+          .thumbnail_link;
+        return (
+          <div
+            style={{
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-around"
+            }}
+          >
+            <img
+              style={{
+                width: "80%",
+                margin: "auto"
+              }}
+              src={imageURL}
+            />
+          </div>
+        );
       default:
-        const oldImageURL = this.state.oldMap.get(treeViewItem.title)!.thumbnail_link;
-        const newImageURL = this.state.newMap.get(treeViewItem.title)!.thumbnail_link;
-        return <ImageDiff old={oldImageURL} new={newImageURL} />
+        const oldImageURL = this.state.oldMap.get(treeViewItem.title)!
+          .src_large;
+        const newImageURL = this.state.newMap.get(treeViewItem.title)!
+          .thumbnail_link;
+        return <ImageDiff old={oldImageURL} new={newImageURL} />;
     }
   }
 
@@ -370,12 +454,15 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
         return DiffModal._renderDeleted();
       case DiffItemState.NEW:
       case DiffItemState.TYPECHANGED:
-        const AMLText = this.state.newMap.get(treeViewItem.title)!.content_plain.raw;
-        return <TextDiff old={""} new={AMLText} />
+        const AMLText = this.state.newMap.get(treeViewItem.title)!.content_plain
+          .raw;
+        return <TextDiff old={""} new={AMLText} />;
       default:
-        const oldAMLText = this.state.oldMap.get(treeViewItem.title)!.content_plain.raw;
-        const newAMLText = this.state.newMap.get(treeViewItem.title)!.content_plain.raw;
-        return <TextDiff old={oldAMLText} new={newAMLText} />
+        const oldAMLText = this.state.oldMap.get(treeViewItem.title)!
+          .content_plain.raw;
+        const newAMLText = this.state.newMap.get(treeViewItem.title)!
+          .content_plain.raw;
+        return <TextDiff old={oldAMLText} new={newAMLText} />;
     }
   }
 
@@ -388,105 +475,207 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
     switch (treeViewItem.state) {
       case DiffItemState.DELETED:
         return DiffModal._renderDeleted();
-      default: 
-      // No diff
-      return (
-        <div style={{
-          display: "flex",
-          height: "100%",
-          flexDirection: "column",
-          justifyContent: "center",
-        }}>
-          <div style={{
-            textAlign: "center",
-            width: "100%",
-            margin: "auto",
-            fontSize: "3rem",
-            color: "lightgray",
-          }}>
-            NO PREVIEW AVAILABLE
+      default:
+        // No diff
+        return (
+          <div
+            style={{
+              display: "flex",
+              height: "100%",
+              flexDirection: "column",
+              justifyContent: "center"
+            }}
+          >
+            <div
+              style={{
+                textAlign: "center",
+                width: "100%",
+                margin: "auto",
+                fontSize: "3rem",
+                color: "lightgray"
+              }}
+            >
+              NO PREVIEW AVAILABLE
+            </div>
           </div>
-        </div>
-      );
+        );
     }
   }
 
+  canSubmit(): boolean {
+    return (
+      this.state.packageVersionDescription.trim().length > 0 &&
+      this.state.packageVersionTitle.trim().length > 0 &&
+      this.state.checkedItemTitles.length > 0
+    );
+  }
+
   renderDiffByTitle(title: string): JSX.Element | null {
-    const packageItem = (this.state.newMap.get(title) || this.state.oldMap.get(title));
+    const packageItem =
+      this.state.newMap.get(title) || this.state.oldMap.get(title);
     if (!packageItem) {
       return null;
     }
     const treeViewItem = this.state.treeViewItemMap.get(title)!;
     switch (getDataType(packageItem)) {
-      case DataType.MD: return this.renderDiffAsMarkdown(treeViewItem);
-      case DataType.AML: return this.renderDiffAsAML(treeViewItem);
-      case DataType.IMAGE: return this.renderDiffAsImage(treeViewItem);
-      default: return this.renderDiffAsOther(treeViewItem);
+      case DataType.MD:
+        return this.renderDiffAsMarkdown(treeViewItem);
+      case DataType.AML:
+        return this.renderDiffAsAML(treeViewItem);
+      case DataType.IMAGE:
+        return this.renderDiffAsImage(treeViewItem);
+      default:
+        return this.renderDiffAsOther(treeViewItem);
     }
   }
 
-  handleSubmit = () => {
+  handleInputChange = (
+    field: "packageVersionTitle" | "packageVersionDescription"
+  ) => (evt: ChangeEvent<HTMLInputElement>) => {
+    this.setState({
+      [field]: evt.target.value
+    } as Pick<IDiffModalState, "packageVersionTitle" | "packageVersionDescription">);
+  };
+
+  handleSubmit = async () => {
     // TODO: fill this to connect to API
     // checkedItemTitles contains the names of the items to update.
     // Use these names as keys into state.oldMap and state.newMap
     // to get the corresponding packages.
-    
     // If you don't want to find the change type again yourself,
     // use the keys to get items in state.treeViewItemMap.
     // Each of these items would have a field `treeViewItem.state`
     // for you to inspect.
-  }
+    this.setState({
+      isSubmitting: true
+    });
+
+    await this.props.handleSubmit(
+      this.state.packageVersionTitle,
+      this.state.packageVersionDescription,
+      this.state.checkedItemTitles
+    );
+
+    this.setState({
+      isSubmitting: false
+    });
+
+    this.props.setOpen(false);
+    this.props.onSubmit();
+  };
 
   render() {
     return (
       <Modal
-        title="Selected items"
-        visible={true}
+        title="Create New Version"
+        visible={this.props.isOpen}
         onOk={this.handleSubmit}
-        // onCancel={this.handleCancel}
+        onCancel={this.closeModal}
         bodyStyle={{
-          height: "70vh",
+          minHeight: "70vh",
+          display: "flex",
+          flexDirection: "column"
         }}
         width={"80vw"}
+        okText="Create"
+        okButtonProps={{
+          disabled: !this.canSubmit()
+        }}
+        confirmLoading={this.state.isSubmitting}
+      >
+        <div style={{ marginBottom: "1em" }}>
+          <Input
+            size="large"
+            placeholder="Enter a title for the new version"
+            style={{ fontSize: "1.5em", marginBottom: "0.5em" }}
+            value={this.state.packageVersionTitle}
+            onChange={this.handleInputChange("packageVersionTitle")}
+          />
+          <Input
+            size="small"
+            placeholder="Enter a version description"
+            value={this.state.packageVersionDescription}
+            onChange={this.handleInputChange("packageVersionDescription")}
+          />
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            flex: 1,
+            height: "100%"
+          }}
         >
-        <div style={{
-          display: "flex",
-          height: "100%",
-        }}>
           <div
             style={{
               width: "20vw",
               display: "inline-block",
-              borderRight: "2px solid lightgray",
-              height: "100%",
-              overflow: "scroll",
-            }}>
+              borderRight: "1px solid lightgray",
+              overflowX: "scroll"
+            }}
+          >
+            <h4>Select files to include</h4>
             <Tree
               checkable
               onSelect={this.updateDiffed}
               onCheck={this.updateChecked}
-              checkedKeys={this.state.checkedItemTitles.concat(this.state.checkedCategoryTitles)}
+              checkedKeys={this.state.checkedItemTitles.concat(
+                this.state.checkedCategoryTitles
+              )}
             >
-              <TreeNode title="Images" key={DiffModal.createDummyMarker(0)}>
-                {this.state.treeView.images.map(item => (
-                  <TreeNode title={item.title} key={item.title} isLeaf />
-                ))}
-              </TreeNode>
-              <TreeNode title="AMLs" key={DiffModal.createDummyMarker(1)}>
-                {this.state.treeView.amls.map(item => (
-                  <TreeNode title={item.title} key={item.title} isLeaf />
-                ))}
-              </TreeNode>
-              <TreeNode title="Markdowns" key={DiffModal.createDummyMarker(2)}>
-                {this.state.treeView.markdowns.map(item => (
-                  <TreeNode title={item.title} key={item.title} isLeaf />
-                ))}
-              </TreeNode>
-              <TreeNode title="Others" key={DiffModal.createDummyMarker(3)}>
-                {this.state.treeView.others.map(item => (
-                  <TreeNode title={item.title} key={item.title} isLeaf />
-                ))}
-              </TreeNode>
+              {this.state.treeView.images.length > 0 ? (
+                <TreeNode title="Images" key={DiffModal.createDummyMarker(0)}>
+                  {this.state.treeView.images.map(item => (
+                    <TreeNode title={item.title} key={item.title} isLeaf />
+                  ))}
+                </TreeNode>
+              ) : (
+                <></>
+              )}
+              {this.state.treeView.amls.length > 0 ? (
+                <TreeNode title="AML" key={DiffModal.createDummyMarker(1)}>
+                  {this.state.treeView.amls.map(item => (
+                    <TreeNode title={item.title} key={item.title} isLeaf />
+                  ))}
+                </TreeNode>
+              ) : (
+                <></>
+              )}
+              {this.state.treeView.markdowns.length > 0 ? (
+                <TreeNode title="Markdown" key={DiffModal.createDummyMarker(2)}>
+                  {this.state.treeView.markdowns.map(item => (
+                    <TreeNode title={item.title} key={item.title} isLeaf />
+                  ))}
+                </TreeNode>
+              ) : (
+                <></>
+              )}
+              {this.state.treeView.others.length > 0 ? (
+                <TreeNode title="Others" key={DiffModal.createDummyMarker(3)}>
+                  {this.state.treeView.others.map(item => (
+                    <TreeNode title={item.title} key={item.title} isLeaf />
+                  ))}
+                </TreeNode>
+              ) : (
+                <></>
+              )}
+              {this.state.notChangedTitles.length > 0 ? (
+                <TreeNode
+                  title="Unchanged Files"
+                  key={DiffModal.createDummyMarker(4)}
+                >
+                  {this.state.notChangedTitles.map(title => (
+                    <TreeNode
+                      title={title}
+                      key={title}
+                      isLeaf
+                      disabled={true}
+                    />
+                  ))}
+                </TreeNode>
+              ) : (
+                <></>
+              )}
             </Tree>
           </div>
           <div
@@ -494,149 +683,172 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
               display: "inline-block",
               width: "50vw",
               height: "100%",
-              margin: "0 auto",
-            }}>
+              margin: "0 auto"
+            }}
+          >
+            {this.props.latestCommittedVersion ? (
+              <h4 style={{ marginBottom: "1em" }}>
+                Comparing against files from verion{" "}
+                {this.props.latestCommittedVersion.id_num}:
+                {" " + this.props.latestCommittedVersion.title}
+              </h4>
+            ) : (
+              undefined
+            )}
             {this.renderDiffByTitle(this.state.diffedItemTitle)}
           </div>
         </div>
       </Modal>
-    )
+    );
   }
 }
 
-export function DUMMY_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_DiffModal(): JSX.Element {
-  return <DiffModal
-    lastestCommittedVersion={{
-      items: [{
-        altLink: "",
-        last_modified_by: "",
-        format: "AML",
-        mimeType: "",
-        title: "My AML.aml",
-        thumbnail_link: "",
-        content_plain: {
-          raw: "this is fake archieml",
-          data: "",
-          html: "",
-        }
-      }, {
-        altLink: "",
-        last_modified_by: "",
-        format: "MD",
-        mimeType: "",
-        title: "My Markdown.md",
-        thumbnail_link: "",
-        content_plain: {
-          raw: "# this is fake markdown",
-          data: "",
-          html: "<h1>this is fake markdown</h1>",
-        }
-      }, {
-        altLink: "https://picsum.photos/id/608/400/300",
-        last_modified_by: "",
-        format: "",
-        mimeType: "image/jpeg",
-        title: "My Image.jpg",
-        thumbnail_link: "https://picsum.photos/id/608/400/300",
-        content_plain: {
-          raw: "",
-          data: "",
-          html: "",
-        }
-      }, {
-        altLink: "",
-        last_modified_by: "",
-        format: "",
-        mimeType: "unknown",
-        title: "My other GONE.strace",
-        thumbnail_link: "",
-        content_plain: {
-          raw: "",
-          data: "",
-          html: "",
-        }
-      }],
-    }}
-    cachedPackage={{
-      id: "1",
-      slug: "slug1",
-      metadata: {},
-      package_set: "pset",
-      cached: [{
-        altLink: "https://picsum.photos/id/609/400/300",
-        last_modified_by: "",
-        format: "",
-        mimeType: "image/jpeg",
-        title: "My Image.jpg",
-        thumbnail_link: "https://picsum.photos/id/609/400/300",
-        content_plain: {
-          raw: "",
-          data: "",
-          html: "",
-        }
-      }, {
-        altLink: "",
-        last_modified_by: "",
-        format: "AML",
-        mimeType: "",
-        title: "My AML.aml",
-        thumbnail_link: "",
-        content_plain: {
-          raw: "this is fake archieml 222",
-          data: "",
-          html: "",
-        }
-      }, {
-        altLink: "",
-        last_modified_by: "",
-        format: "MD",
-        mimeType: "",
-        title: "My Markdown.md",
-        thumbnail_link: "",
-        content_plain: {
-          raw: "# this is fake markdown again!",
-          data: "",
-          html: "<h1>this is fake markdown again!</h1>",
-        }
-      }, {
-        altLink: "",
-        last_modified_by: "",
-        format: "MD",
-        mimeType: "",
-        title: "My Markdown NEW.md",
-        thumbnail_link: "",
-        content_plain: {
-          raw: "# this is new markdown!",
-          data: "",
-          html: "<h1>this is new markdown!</h1>",
-        }
-      }, {
-        altLink: "https://picsum.photos/id/620/400/300",
-        last_modified_by: "",
-        format: "",
-        mimeType: "image/jpeg",
-        title: "New Image.jpg",
-        thumbnail_link: "https://picsum.photos/id/620/400/300",
-        content_plain: {
-          raw: "",
-          data: "",
-          html: "",
-        }
-      }, {
-        altLink: "",
-        last_modified_by: "",
-        format: "",
-        mimeType: "unknown",
-        title: "My other NEW.strace",
-        thumbnail_link: "",
-        content_plain: {
-          raw: "",
-          data: "",
-          html: "",
-        }
-      }],
-      last_fetched_date: "2019-01-01",
-    }}
-    />
-}
-
+// export function DUMMY_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_DiffModal(): JSX.Element {
+//   return (
+//     <DiffModal
+//       latestCommittedVersion={{
+//         items: [
+//           {
+//             altLink: "",
+//             last_modified_by: "",
+//             format: "AML",
+//             mimeType: "",
+//             title: "My AML.aml",
+//             thumbnail_link: "",
+//             content_plain: {
+//               raw: "this is fake archieml",
+//               data: "",
+//               html: ""
+//             }
+//           },
+//           {
+//             altLink: "",
+//             last_modified_by: "",
+//             format: "MD",
+//             mimeType: "",
+//             title: "My Markdown.md",
+//             thumbnail_link: "",
+//             content_plain: {
+//               raw: "# this is fake markdown",
+//               data: "",
+//               html: "<h1>this is fake markdown</h1>"
+//             }
+//           },
+//           {
+//             altLink: "https://picsum.photos/id/608/400/300",
+//             last_modified_by: "",
+//             format: "",
+//             mimeType: "image/jpeg",
+//             title: "My Image.jpg",
+//             thumbnail_link: "https://picsum.photos/id/608/400/300",
+//             content_plain: {
+//               raw: "",
+//               data: "",
+//               html: ""
+//             }
+//           },
+//           {
+//             altLink: "",
+//             last_modified_by: "",
+//             format: "",
+//             mimeType: "unknown",
+//             title: "My other GONE.strace",
+//             thumbnail_link: "",
+//             content_plain: {
+//               raw: "",
+//               data: "",
+//               html: ""
+//             }
+//           }
+//         ]
+//       }}
+//       cachedPackage={{
+//         id: "1",
+//         slug: "slug1",
+//         metadata: {},
+//         package_set: "pset",
+//         cached: [
+//           {
+//             altLink: "https://picsum.photos/id/609/400/300",
+//             last_modified_by: "",
+//             format: "",
+//             mimeType: "image/jpeg",
+//             title: "My Image.jpg",
+//             thumbnail_link: "https://picsum.photos/id/609/400/300",
+//             content_plain: {
+//               raw: "",
+//               data: "",
+//               html: ""
+//             }
+//           },
+//           {
+//             altLink: "",
+//             last_modified_by: "",
+//             format: "AML",
+//             mimeType: "",
+//             title: "My AML.aml",
+//             thumbnail_link: "",
+//             content_plain: {
+//               raw: "this is fake archieml 222",
+//               data: "",
+//               html: ""
+//             }
+//           },
+//           {
+//             altLink: "",
+//             last_modified_by: "",
+//             format: "MD",
+//             mimeType: "",
+//             title: "My Markdown.md",
+//             thumbnail_link: "",
+//             content_plain: {
+//               raw: "# this is fake markdown again!",
+//               data: "",
+//               html: "<h1>this is fake markdown again!</h1>"
+//             }
+//           },
+//           {
+//             altLink: "",
+//             last_modified_by: "",
+//             format: "MD",
+//             mimeType: "",
+//             title: "My Markdown NEW.md",
+//             thumbnail_link: "",
+//             content_plain: {
+//               raw: "# this is new markdown!",
+//               data: "",
+//               html: "<h1>this is new markdown!</h1>"
+//             }
+//           },
+//           {
+//             altLink: "https://picsum.photos/id/620/400/300",
+//             last_modified_by: "",
+//             format: "",
+//             mimeType: "image/jpeg",
+//             title: "New Image.jpg",
+//             thumbnail_link: "https://picsum.photos/id/620/400/300",
+//             content_plain: {
+//               raw: "",
+//               data: "",
+//               html: ""
+//             }
+//           },
+//           {
+//             altLink: "",
+//             last_modified_by: "",
+//             format: "",
+//             mimeType: "unknown",
+//             title: "My other NEW.strace",
+//             thumbnail_link: "",
+//             content_plain: {
+//               raw: "",
+//               data: "",
+//               html: ""
+//             }
+//           }
+//         ],
+//         last_fetched_date: "2019-01-01"
+//       }}
+//     />
+//   );
+// }
