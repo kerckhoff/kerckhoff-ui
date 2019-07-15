@@ -1,7 +1,7 @@
 import React from "react";
 import { RouteChildrenProps, Route } from "react-router";
 import { GlobalState, IGlobalState } from "../providers";
-import { Row, Col, Button, Icon, Divider, Tree, Spin } from "antd";
+import { Row, Col, Button, Icon, Divider, Tree, Spin, Tag } from "antd";
 import { SubHeader, SmallText } from "../components/UIFragments";
 import {
   IPackage,
@@ -20,6 +20,8 @@ import { Link } from "react-router-dom";
 import { VersionTimeline } from "../components/VersionTimeline";
 import { PackagePreviewDisplay } from "../components/PackagePreviewDisplay";
 import { DiffModal } from "../components/DiffModal";
+import { async } from "q";
+import { notifyOk } from "../commons/notify";
 
 const TreeNode = Tree.TreeNode;
 
@@ -194,6 +196,16 @@ export class PackageDetailPageInternal extends React.Component<
     await this.getPackageDetails();
   };
 
+  handlePublish = async () => {
+    const ops = this.props.context.modelOps!;
+    await ops.publishPackage(
+      this.props.context.selectedPackageSet!,
+      this.state.package!
+    );
+    await this.getPackageDetails();
+    notifyOk("Published Successfully!");
+  };
+
   sortedCachedProperties = () => {
     if (this.state.package)
       return (_.groupBy(this.state.package.cached, ci =>
@@ -229,6 +241,17 @@ export class PackageDetailPageInternal extends React.Component<
     return _.map(this.sortedCachedProperties(), () => {});
   }
 
+  renderStateIcon() {
+    switch (this.state.package!.state) {
+      case "wip":
+        return <Tag color="orange">IN PROGRESS</Tag>;
+      case "rdy":
+        return <Tag color="green">READY</Tag>;
+      case "pub":
+        return <Tag>Published</Tag>;
+    }
+  }
+
   render() {
     const lastFetchedDate =
       this.state.package && this.state.package.last_fetched_date
@@ -245,6 +268,7 @@ export class PackageDetailPageInternal extends React.Component<
               <DiffModal
                 key={
                   this.state.package.id +
+                  this.state.package.last_fetched_date +
                   (this.state.latestVersion
                     ? this.state.latestVersion.id
                     : this.state.versions.length)
@@ -265,6 +289,9 @@ export class PackageDetailPageInternal extends React.Component<
                   <SlashSpan>/</SlashSpan>
                   {this.state.package.slug}
                 </h3>
+                <div style={{ marginBottom: "1em" }} />
+                {this.renderStateIcon()}
+
                 <Divider />
                 <Button
                   style={{
@@ -275,9 +302,22 @@ export class PackageDetailPageInternal extends React.Component<
                   type="primary"
                   block
                   onClick={this.toggleCreateVersionModal}
+                  icon="file-add"
                 >
-                  <Icon type="file-add" />
                   Create Version
+                </Button>
+                <Button
+                  style={{
+                    marginBottom: "1em",
+                    maxWidth: "200px",
+                    display: "block"
+                  }}
+                  icon="export"
+                  block
+                  onClick={this.handlePublish}
+                  disabled={this.state.versions.length < 1}
+                >
+                  Publish
                 </Button>
                 <Button.Group
                   style={{

@@ -8,7 +8,11 @@ import {
   IPackageVersionResponse,
   IPackageVersionWithVersionData,
   IPackageWithVersion,
-  ICreateVersionPayload
+  ICreateVersionPayload,
+  IPackageSetDetailed,
+  IIntegration,
+  IIntegrationCreation,
+  IIntegrationLinkResponse
 } from "../commons/interfaces";
 
 type PackageOrderingField =
@@ -84,6 +88,12 @@ export class ModelOperations {
     );
   }
 
+  async publishPackage(ps: IPackageSet, p: IPackage) {
+    return this.axios.post(
+      `/package-sets/${ps.slug}/packages/${p.slug}/publish/`
+    );
+  }
+
   async createPackageSet(ps: IPackageSetInit) {
     return this.axios.post<IPackage>(`/package-sets/`, ps);
   }
@@ -92,5 +102,25 @@ export class ModelOperations {
     return this.axios.get<IPackageSetResponse>(`/package-sets/`, {
       params: { ordering }
     });
+  }
+
+  async getPackageSetDetailed(slug: string) {
+    return this.axios.get<IPackageSetDetailed>(`/package-sets/${slug}/`);
+  }
+
+  async createPackageSetIntegration(
+    ps: IPackageSet,
+    integration: IIntegrationCreation
+  ) {
+    return this.axios.post<IIntegration>(
+      `/package-sets/${ps.slug}/integration/`,
+      integration
+    );
+  }
+
+  async getIntegrationOAuthLink(ps: IPackageSet, integration: IIntegration) {
+    return this.axios.get<IIntegrationLinkResponse>(
+      `/integrations/?ps-slug=${ps.id}&id=${integration.id}`
+    );
   }
 }

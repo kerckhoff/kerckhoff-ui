@@ -4,6 +4,7 @@ import { RouteProps, RouteChildrenProps } from "react-router";
 import { IPackage } from "../commons/interfaces";
 import { GlobalState, IGlobalState } from "../providers";
 import { MetaInfoCard } from "../components/PSMetaInfoCard";
+import { IntegrationsInfoCard } from "../components/PSIntegrationsInfoCard";
 import styled from "styled-components";
 import { PackageCard } from "../components/PackageCard";
 import {
@@ -118,7 +119,7 @@ export class HomepageInternal extends React.Component<
       <>
         {this.props.context.selectedPackageSet ? (
           <Row gutter={32}>
-            <Col span={6}>
+            <Col span={6} style={{ maxWidth: "300px" }}>
               <SubHeader>PACKAGESET INFO</SubHeader>
               <h3>{this.props.context.selectedPackageSet!.slug}</h3>
 
@@ -135,6 +136,11 @@ export class HomepageInternal extends React.Component<
 
               <Divider />
               <MetaInfoCard
+                context={this.props.context}
+                ps={this.props.context.selectedPackageSet}
+              />
+              <div style={{ marginBottom: "1em" }} />
+              <IntegrationsInfoCard
                 context={this.props.context}
                 ps={this.props.context.selectedPackageSet}
               />

@@ -6,7 +6,7 @@ import {
   IPackageVersionWithVersionData,
   IPackageItemData
 } from "../commons/interfaces";
-import { Tree, Modal, Input } from "antd";
+import { Tree, Modal, Input, Tag } from "antd";
 const { TreeNode } = Tree;
 
 interface IDiffModalProps {
@@ -564,6 +564,28 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
     this.props.onSubmit();
   };
 
+  renderTitle = (title: string) => {
+    const treeViewItem = this.state.treeViewItemMap.get(title);
+    if (treeViewItem) {
+      switch (treeViewItem.state) {
+        case DiffItemState.NEW:
+          return (
+            <>
+              <Tag color="blue">NEW</Tag> <span>{title}</span>
+            </>
+          );
+        default:
+          return (
+            <>
+              <Tag color="orange">UPDATED</Tag> <span>{title}</span>
+            </>
+          );
+      }
+    } else {
+      return title;
+    }
+  };
+
   render() {
     return (
       <Modal
@@ -626,7 +648,11 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
               {this.state.treeView.images.length > 0 ? (
                 <TreeNode title="Images" key={DiffModal.createDummyMarker(0)}>
                   {this.state.treeView.images.map(item => (
-                    <TreeNode title={item.title} key={item.title} isLeaf />
+                    <TreeNode
+                      title={this.renderTitle(item.title)}
+                      key={item.title}
+                      isLeaf
+                    />
                   ))}
                 </TreeNode>
               ) : (
@@ -635,7 +661,11 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
               {this.state.treeView.amls.length > 0 ? (
                 <TreeNode title="AML" key={DiffModal.createDummyMarker(1)}>
                   {this.state.treeView.amls.map(item => (
-                    <TreeNode title={item.title} key={item.title} isLeaf />
+                    <TreeNode
+                      title={this.renderTitle(item.title)}
+                      key={item.title}
+                      isLeaf
+                    />
                   ))}
                 </TreeNode>
               ) : (
@@ -644,7 +674,11 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
               {this.state.treeView.markdowns.length > 0 ? (
                 <TreeNode title="Markdown" key={DiffModal.createDummyMarker(2)}>
                   {this.state.treeView.markdowns.map(item => (
-                    <TreeNode title={item.title} key={item.title} isLeaf />
+                    <TreeNode
+                      title={this.renderTitle(item.title)}
+                      key={item.title}
+                      isLeaf
+                    />
                   ))}
                 </TreeNode>
               ) : (
@@ -653,7 +687,11 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
               {this.state.treeView.others.length > 0 ? (
                 <TreeNode title="Others" key={DiffModal.createDummyMarker(3)}>
                   {this.state.treeView.others.map(item => (
-                    <TreeNode title={item.title} key={item.title} isLeaf />
+                    <TreeNode
+                      title={this.renderTitle(item.title)}
+                      key={item.title}
+                      isLeaf
+                    />
                   ))}
                 </TreeNode>
               ) : (
@@ -688,7 +726,7 @@ export class DiffModal extends Component<IDiffModalProps, IDiffModalState> {
           >
             {this.props.latestCommittedVersion ? (
               <h4 style={{ marginBottom: "1em" }}>
-                Comparing against files from verion{" "}
+                Comparing against files from version{" "}
                 {this.props.latestCommittedVersion.id_num}:
                 {" " + this.props.latestCommittedVersion.title}
               </h4>

@@ -1,5 +1,10 @@
 import React from "react";
-import { IUser, IPackageSetResponse, IPackageSet } from "../commons/interfaces";
+import {
+  IUser,
+  IPackageSetResponse,
+  IPackageSet,
+  IPackageSetDetailed
+} from "../commons/interfaces";
 import {
   OAUTH_LOCAL_STORAGE_KEY,
   KERCKHOFF_URL,
@@ -20,10 +25,13 @@ export interface IGlobalState {
   user?: Partial<IUser>;
   authenticatedAxios?: AxiosInstance;
   packageSets?: IPackageSet[];
-  selectedPackageSet?: IPackageSet;
+  selectedPackageSet?: IPackageSetDetailed;
   modelOps?: ModelOperations;
   updateUser: (info: Partial<IUser>) => Promise<void>;
-  setPackageSet: (id: string) => Promise<IPackageSet | undefined>;
+  setPackageSet: (
+    slug: string,
+    force?: boolean
+  ) => Promise<IPackageSetDetailed | undefined>;
   syncPackageSets: () => Promise<void>;
   refreshStateFromLocalStorage: () => Promise<void>;
 }
@@ -94,22 +102,30 @@ export class GlobalStateWrapper extends React.Component<{}, IGlobalState> {
     return axios;
   };
 
-  setPackageSet = async (slug: string) => {
-    if (!this.state.packageSets) {
-      await this.syncPackageSets();
-    }
+  setPackageSet = async (slug: string, force: boolean = false) => {
+    if (
+      force ||
+      !this.state.selectedPackageSet ||
+      (this.state.selectedPackageSet &&
+        this.state.selectedPackageSet.slug !== slug)
+    ) {
+      try {
+        const psDetailed = await this.state.modelOps!.getPackageSetDetailed(
+          slug
+        );
 
-    const resultPackageSet = this.state.packageSets!.find(v => v.slug === slug);
-    if (!resultPackageSet) {
-      notifyError(`Package Set ${slug} is not found!`);
-    } else {
-      if (this.state.selectedPackageSet!.slug !== slug) {
+        console.log(`Loaded ${slug}`, psDetailed.data);
+
         this.setState({
-          selectedPackageSet: resultPackageSet
+          selectedPackageSet: psDetailed.data
         });
+        return psDetailed.data;
+      } catch (err) {
+        console.log(err);
+        notifyError("Could not load Package Set!");
       }
-      return resultPackageSet;
     }
+    return this.state.selectedPackageSet;
   };
 
   syncPackageSets = async () => {
@@ -127,10 +143,15 @@ export class GlobalStateWrapper extends React.Component<{}, IGlobalState> {
       const p = deferred();
       this.setState(
         {
-          packageSets: results.data.results,
-          selectedPackageSet: newPackageSet
+          packageSets: results.data.results
+          // selectedPackageSet: newPackageSet
         },
-        () => p.resolve()
+        () => {
+          if (newPackageSet) {
+            this.setPackageSet(newPackageSet.slug);
+          }
+          p.resolve();
+        }
       );
       return p.promise;
     } else {

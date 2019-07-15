@@ -26,6 +26,26 @@ export interface IPackageSet {
   metadata: IPackageMeta;
 }
 
+export interface IPackageSetDetailed extends IPackageSet {
+  integrations: IIntegration[];
+}
+
+type SupportedIntegrationTypes = "wpc";
+
+export interface IIntegration {
+  id: string;
+  name: string;
+  integration_type: SupportedIntegrationTypes;
+  created_by: IResponseUser;
+  created_at: string;
+  active: boolean;
+}
+
+export interface IIntegrationCreation {
+  name: string;
+  integration_type: SupportedIntegrationTypes;
+}
+
 export type IPackageSetInit = Pick<IPackageSet, "slug">;
 
 export interface IPackageResponse {
@@ -44,6 +64,7 @@ export interface IPackage {
   slug: string;
   metadata: IPackageMeta;
   package_set: string;
+  state: "wip" | "rdy" | "pub";
   cached: ICachedPackageItem[];
   last_fetched_date?: string;
 }
@@ -115,4 +136,8 @@ export interface ICachedPackageItemTextContent {
   data: JSONText;
   html: string;
   raw: string;
+}
+
+export interface IIntegrationLinkResponse {
+  redirect_url: string;
 }
