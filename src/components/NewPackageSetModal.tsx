@@ -83,4 +83,4 @@ class BaseNewPackageSetModal extends React.Component<INewPackageSetModalProps> {
   }
 }
 
-export const NewPackageSetModal = Form.create({})(BaseNewPackageSetModal);
+export const NewPackageSetModal = Form.create<INewPackageSetModalProps>({})(BaseNewPackageSetModal);
