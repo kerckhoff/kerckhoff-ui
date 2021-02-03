@@ -202,13 +202,16 @@ export class PackageDetailPageInternal extends React.Component<
     const ops = this.props.context.modelOps!;
     this.setState({ isPublishing: true });
     notifyInfo("Started publishing. This might take a while.");
-    await ops.publishPackage(
+    const res = await ops.publishPackage(
       this.props.context.selectedPackageSet!,
       this.state.package!
     );
     await this.getPackageDetails();
     this.setState({ isPublishing: false });
-    notifyOk("Published Successfully!");
+    if (res) {
+      // res will be undefined if unsuccessful due to interceptor
+      notifyOk("Published Successfully!");
+    }
   };
 
   sortedCachedProperties = () => {
